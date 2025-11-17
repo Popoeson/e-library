@@ -1,0 +1,49 @@
+/* frontend/style.css */
+
+/* Basic variables */
+:root{
+  --bg: #f6f7fb;
+  --card: #ffffff;
+  --muted: #6b7280;
+  --accent: #2b6ef6;
+  --accent-2: #0ea5a4;
+  --shadow: rgba(20,20,40,0.06);
+  --container-width: 1100px;
+  --radius: 12px;
+  --gap: 18px;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;}
+.container{max-width:var(--container-width);margin:0 auto;padding:24px;}
+
+.site-header{background:linear-gradient(90deg,#ffffff 0%, #f1f7ff 100%);padding:28px 0;border-bottom:1px solid #e6eefc;}
+.logo{margin:0;font-size:26px;display:inline-block;}
+.tagline{margin:6px 0 0;color:var(--muted);font-size:14px;}
+
+.main{padding:28px 0;}
+.search-box{display:flex;gap:12px;align-items:center;background:var(--card);padding:20px;border-radius:var(--radius);box-shadow:0 6px 18px var(--shadow);margin-bottom:18px;}
+.search-box input{flex:1;border:1px solid #e6eefc;padding:14px 16px;border-radius:10px;font-size:16px;}
+.controls{display:flex;gap:12px;align-items:center;}
+.btn{padding:10px 14px;border-radius:10px;border:none;cursor:pointer;font-weight:600;background:#f3f4f6;}
+.btn.primary{background:linear-gradient(180deg,var(--accent),#165dff);color:#fff;box-shadow:0 6px 18px rgba(43,110,246,0.18);}
+
+.results-info{margin:8px 0;color:var(--muted);font-size:14px;}
+.hidden{display:none}
+
+/* Grid of cards */
+.results-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px;margin-top:18px;}
+.card{background:var(--card);padding:16px;border-radius:12px;box-shadow:0 8px 20px var(--shadow);display:flex;flex-direction:column;gap:10px;}
+.card h3{margin:0;font-size:16px;}
+.card p{margin:0;color:var(--muted);font-size:14px;line-height:1.4;}
+.card .meta{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#9aa2b2}
+.card .actions{display:flex;gap:8px}
+
+/* download button */
+.link-btn{padding:8px 10px;border-radius:10px;border:1px solid #e6eefc;background:#fff;cursor:pointer;text-decoration:none;color:var(--accent);font-weight:600;}
+
+/* responsive */
+@media (max-width:640px){
+  .search-box{flex-direction:column;align-items:stretch;}
+  .controls{justify-content:space-between;}
+}
