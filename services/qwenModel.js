@@ -1,91 +1,66 @@
-// backend/services/qwenModel.js
+// services/qwenModel.js
 /**
- * qwenModel.js
- * Minimal wrapper to call your OpenRouter (or other) endpoint for Qwen 2.2
- *
- * Requires:
- *   - OPENROUTER_API_KEY
- *   - OPENROUTER_API_URL  (set this to your OpenRouter URL; example shown in .env.example)
- *
- * This wrapper sends a short prompt to rewrite/clarify the user's query for better web searching.
+ * Wrapper for Qwen 2.2 via OpenRouter or compatible API.
  */
 
-const axios = require('axios');
+const axios = require("axios");
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const OPENROUTER_API_URL = process.env.OPENROUTER_API_URL;
 
 if (!OPENROUTER_API_KEY || !OPENROUTER_API_URL) {
-  console.warn('OpenRouter API key or URL not set. See backend/.env.example');
+  console.warn("⚠️ Warning: OPENROUTER_API_KEY or OPENROUTER_API_URL is missing.");
 }
 
 /**
  * rewriteQuery
- * Asks Qwen to rewrite the user's search into a concise search query
- * @param {string} userQuery
- * @returns {Promise<string>}
+ * Rewrites user query into a concise search-optimized form.
  */
 async function rewriteQuery(userQuery) {
-  if (!OPENROUTER_API_KEY || !OPENROUTER_API_URL) {
-    return userQuery;
-  }
+  if (!OPENROUTER_API_KEY || !OPENROUTER_API_URL) return userQuery;
 
   try {
-    // Example payload for OpenRouter-like chat completions endpoint.
-    // If your endpoint requires a different shape, update accordingly.
     const payload = {
-      model: "qwen-2.2", // confirm exact model name with OpenRouter dashboard if needed
+      model: "qwen-2.2-instruct", // safer and more stable
       messages: [
         {
           role: "system",
-          content: "You are a helpful assistant that rewrites user queries into concise web search queries. Prefer filetype:pdf when appropriate for academic material."
+          content:
+            "Rewrite the user query into a very concise search query optimized for PDFs, textbooks, lecture notes, and academic resources."
         },
         {
           role: "user",
-          content: `Rewrite the following search request into a concise web search query optimized to find PDFs, textbooks, or lecture notes:\n\n"${userQuery}"`
+          content: userQuery
         }
       ],
-      max_tokens: 150,
-      temperature: 0.0
+      max_tokens: 120,
+      temperature: 0
     };
 
     const resp = await axios.post(OPENROUTER_API_URL, payload, {
       headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      timeout: 15000
+        Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json"
+      }
     });
 
-    // Different APIs return completions in different shapes. Try common patterns:
-    const data = resp?.data;
-    // attempt to extract text from common completions shapes
-    let text = null;
-    if (data?.choices && Array.isArray(data.choices) && data.choices[0]) {
-      // OpenAI-like
-      const ch = data.choices[0];
-      text = ch.message?.content?.trim?.() || ch.text?.trim?.();
-    } else if (data?.output && Array.isArray(data.output) && data.output[0]) {
-      // some routers use output[]
-      text = data.output[0].content?.text || data.output[0]?.text;
-    } else if (typeof data === 'string') {
-      text = data;
-    } else if (data?.result) {
-      text = data.result;
-    }
+    const output = resp?.data;
 
-    if (text && text.length > 0) return text;
+    // ---- Extract content in common response patterns ----
+    let text =
+      output?.choices?.[0]?.message?.content?.trim?.() ||
+      output?.choices?.[0]?.text?.trim?.() ||
+      output?.output?.[0]?.content?.text ||
+      output?.output?.[0]?.text ||
+      output?.result;
 
-    // final fallback - join any string-like fields
-    const possible = JSON.stringify(data).slice(0, 500);
-    return possible || userQuery;
+    if (text) return text.trim();
 
+    return userQuery;
   } catch (err) {
-    console.warn('Qwen rewrite error:', err?.response?.data || err.message || err);
-    return userQuery; // fallback to original
+    console.warn("⚠️ Qwen rewrite error:", err?.response?.data || err.message);
+    return userQuery;
   }
 }
 
-module.exports = {
-  rewriteQuery
-};
+module.exports = { rewriteQuery };
