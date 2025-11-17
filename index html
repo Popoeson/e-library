@@ -1,0 +1,40 @@
+<!-- frontend/index.html -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>E-Library — Search the Web</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <h1 class="logo">📚 eLibrary Search</h1>
+      <p class="tagline">Search courses, topics or departments — we find PDFs, books & articles on the web.</p>
+    </div>
+  </header>
+
+  <main class="container main">
+    <section class="search-box">
+      <input id="searchInput" type="text" placeholder="e.g. Computer engineering digital logic textbooks" />
+      <div class="controls">
+        <button id="searchBtn" class="btn primary">Search</button>
+        <label class="small"><input id="pdfOnly" type="checkbox" checked /> PDF only</label>
+      </div>
+    </section>
+
+    <section id="resultsInfo" class="results-info hidden"></section>
+
+    <section id="resultsGrid" class="results-grid"></section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <small>Built with Brave Search & Qwen 2.2 • Demo</small>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
