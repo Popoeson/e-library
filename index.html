@@ -38,8 +38,11 @@
 
   .results-info { text-align:center; color: var(--muted); font-size:14px; margin:24px 0 8px 0; }
 
-  /* AI Summary */
-  .ai-summary { background: #e0f2fe; color: #0369a1; padding:16px 20px; border-radius: var(--radius); font-size:14px; margin-bottom:16px; line-height:1.5; }
+  /* AI Summary (collapsible) */
+  .ai-summary { background: #e0f2fe; color: #0369a1; padding:16px 20px; border-radius: var(--radius); font-size:14px; margin-bottom:16px; line-height:1.5; cursor:pointer; position: relative; }
+  .ai-summary.collapsed { max-height: 60px; overflow: hidden; }
+  .ai-summary::after { content: '▼'; position: absolute; right:16px; bottom:16px; font-size:12px; }
+  .ai-summary.expanded::after { content: '▲'; }
 
   /* Results Grid */
   .results-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:var(--gap); margin-top:16px; }
@@ -80,7 +83,7 @@
   </section>
 
   <section id="resultsInfo" class="results-info hidden"></section>
-  <section id="aiSummary" class="ai-summary hidden"></section>
+  <section id="aiSummary" class="ai-summary collapsed hidden"></section>
   <section id="resultsGrid" class="results-grid"></section>
 </main>
 
@@ -97,11 +100,15 @@ const resultsGrid = document.getElementById('resultsGrid');
 const resultsInfo = document.getElementById('resultsInfo');
 const aiSummary = document.getElementById('aiSummary');
 
-// Remove HTML tags safely
 function cleanHTML(str) {
   const tmp = document.createElement("div");
   tmp.innerHTML = str;
   return tmp.textContent || tmp.innerText || "";
+}
+
+function toggleSummary() {
+  aiSummary.classList.toggle('collapsed');
+  aiSummary.classList.toggle('expanded');
 }
 
 async function doSearch() {
@@ -126,10 +133,12 @@ async function doSearch() {
     resultsInfo.textContent = `Showing ${items.length} results for "${data.query}"`;
     resultsInfo.classList.remove('hidden');
 
-    // Show AI-style summary if available
+    // Show AI overview if available
     if(data.summary){
       aiSummary.textContent = cleanHTML(data.summary);
       aiSummary.classList.remove('hidden');
+      aiSummary.classList.add('collapsed');
+      aiSummary.addEventListener('click', toggleSummary);
     }
 
     if(items.length===0){
@@ -141,7 +150,6 @@ async function doSearch() {
       const card = document.createElement('div'); 
       card.className='card';
 
-      // PDF badge
       if(it.link && it.link.toLowerCase().endsWith('.pdf')){
         const badge = document.createElement('div'); 
         badge.className='pdf-badge'; 
