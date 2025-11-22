@@ -19,7 +19,6 @@ router.post("/", async (req, res) => {
 
     // STEP 1 — Rewrite query using Qwen for better search accuracy
     let rewritten = query;
-
     try {
       const suggestion = await qwen.rewriteQuery(query);
       if (suggestion && typeof suggestion === "string" && suggestion.trim().length > 0) {
@@ -29,28 +28,36 @@ router.post("/", async (req, res) => {
       console.warn("Qwen rewrite failed:", rewriteError.message || rewriteError);
     }
 
-    // STEP 2 — Enhance search with PDF preference
-    let searchString = rewritten;
-    if (preferPdf) {
-      searchString = `${rewritten} filetype:pdf`;
-    }
+    // STEP 2 — Optionally enhance search for PDFs
+    const searchString = preferPdf ? `${rewritten} filetype:pdf` : rewritten;
 
     // STEP 3 — Perform Brave Search
     const results = await brave.searchWeb(searchString, { limit });
 
-    // STEP 4 — Return everything to frontend
+    // STEP 4 — Fetch AI topic summary
+    let summary = "";
+    try {
+      const summaryResponse = await qwen.summarizeTopic(rewritten); // make sure your qwenModel has this method
+      if (summaryResponse && typeof summaryResponse === "string") {
+        summary = summaryResponse.trim();
+      }
+    } catch (summaryError) {
+      console.warn("Qwen summary failed:", summaryError.message || summaryError);
+    }
+
+    // STEP 5 — Return everything to frontend
     return res.json({
       status: "success",
       originalQuery: query,
       rewrittenQuery: rewritten,
       finalSearch: searchString,
+      summary,           // <-- send AI overview to frontend
       resultsCount: results.length,
       results
     });
 
   } catch (err) {
     console.error("SEARCH ERROR:", err);
-
     return res.status(500).json({
       status: "error",
       message: "An error occurred while searching",
