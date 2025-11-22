@@ -1,6 +1,7 @@
 // services/qwenModel.js
 /**
  * Wrapper for Qwen 2.2 via OpenRouter or compatible API.
+ * Provides query rewriting and AI topic summarization.
  */
 
 const axios = require("axios");
@@ -21,7 +22,7 @@ async function rewriteQuery(userQuery) {
 
   try {
     const payload = {
-      model: "qwen-2.2-instruct", // safer and more stable
+      model: "qwen-2.2-instruct",
       messages: [
         {
           role: "system",
@@ -46,7 +47,6 @@ async function rewriteQuery(userQuery) {
 
     const output = resp?.data;
 
-    // ---- Extract content in common response patterns ----
     let text =
       output?.choices?.[0]?.message?.content?.trim?.() ||
       output?.choices?.[0]?.text?.trim?.() ||
@@ -54,13 +54,58 @@ async function rewriteQuery(userQuery) {
       output?.output?.[0]?.text ||
       output?.result;
 
-    if (text) return text.trim();
-
-    return userQuery;
+    return text?.trim() || userQuery;
   } catch (err) {
     console.warn("⚠️ Qwen rewrite error:", err?.response?.data || err.message);
     return userQuery;
   }
 }
 
-module.exports = { rewriteQuery };
+/**
+ * summarizeTopic
+ * Generates a concise AI summary for a given topic/query.
+ */
+async function summarizeTopic(topic) {
+  if (!OPENROUTER_API_KEY || !OPENROUTER_API_URL) return "";
+
+  try {
+    const payload = {
+      model: "qwen-2.2-instruct",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are an AI academic assistant. Summarize the following topic in 2–3 concise sentences suitable for students."
+        },
+        {
+          role: "user",
+          content: topic
+        }
+      ],
+      max_tokens: 200,
+      temperature: 0.3
+    };
+
+    const resp = await axios.post(OPENROUTER_API_URL, payload, {
+      headers: {
+        Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json"
+      }
+    });
+
+    const output = resp?.data;
+    const text =
+      output?.choices?.[0]?.message?.content?.trim?.() ||
+      output?.choices?.[0]?.text?.trim?.() ||
+      output?.output?.[0]?.content?.text ||
+      output?.output?.[0]?.text ||
+      output?.result;
+
+    return text?.trim() || "";
+  } catch (err) {
+    console.warn("⚠️ Qwen summary error:", err?.response?.data || err.message);
+    return "";
+  }
+}
+
+module.exports = { rewriteQuery, summarizeTopic };
