@@ -1,16 +1,20 @@
 // services/googleBooks.js
+// No import needed — fetch is global in Node 18+
+
 const GOOGLE_API_KEY = process.env.GOOGLE_BOOKS_KEY || "";
 
-export async function searchGoogleBooks(query, limit = 5) {
+async function searchGoogleBooks(query, limit = 5) {
   try {
     const url =
       `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}` +
       `&maxResults=${limit}` +
       (GOOGLE_API_KEY ? `&key=${GOOGLE_API_KEY}` : "");
 
-    // Use Node's built-in fetch (Node >= 18)
     const res = await fetch(url);
-    if (!res.ok) throw new Error("Google Books search failed");
+    if (!res.ok) {
+      console.error("Google Books Fetch Error:", res.status, res.statusText);
+      throw new Error("Google Books search failed");
+    }
 
     const data = await res.json();
 
@@ -21,8 +25,11 @@ export async function searchGoogleBooks(query, limit = 5) {
       source: "googlebooks",
       type: "book",
     }));
+
   } catch (err) {
     console.error("Google Books Error:", err.message);
     return [];
   }
 }
+
+module.exports = { searchGoogleBooks };
