@@ -1,5 +1,4 @@
 // services/openLibrary.js
-import fetch from "node-fetch";
 
 export async function searchOpenLibrary(query, limit = 5) {
   try {
