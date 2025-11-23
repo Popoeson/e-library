@@ -1,10 +1,10 @@
 <!doctype html>
-
 <html lang="en">  
 <head>  
 <meta charset="utf-8" />  
 <meta name="viewport" content="width=device-width,initial-scale=1" />  
-<title>E-Library — AI Search</title>  <style>  
+<title>E-Library — AI Search</title>  
+<style>  
   :root {  
     --bg: #f4f6fa;  
     --card: #fff;  
@@ -15,84 +15,54 @@
     --gap: 16px;  
     --container-width: 900px;  
   }  
-  
   * { box-sizing: border-box; }  
   body, html { margin:0; padding:0; font-family: Inter, sans-serif; background: var(--bg); }  
   .container { max-width: var(--container-width); margin: 0 auto; padding: 24px; }  
-  
   .site-header { text-align:center; padding:60px 0 40px 0; }  
   .logo { font-size: 32px; font-weight:700; display:block; }  
   .tagline { color: var(--muted); font-size:16px; margin-top:6px; }  
-  
   .search-box { display:flex; flex-direction:column; align-items:center; gap:12px; margin-top:32px; }  
   .search-input { width:100%; max-width:600px; padding:16px 20px; font-size:18px; border-radius:var(--radius); border:1px solid #d1d5db; box-shadow:0 4px 12px var(--shadow); outline:none; transition: all 0.2s ease; }  
   .search-input:focus { border-color: var(--accent); box-shadow:0 6px 18px rgba(37,99,235,0.2); }  
-  
   .controls { display:flex; gap:12px; margin-top:12px; justify-content:center; align-items:center; }  
   .btn { padding:12px 20px; border-radius:var(--radius); border:none; font-weight:600; cursor:pointer; transition: all 0.2s ease; }  
   .btn.primary { background: var(--accent); color:#fff; box-shadow:0 6px 18px rgba(37,99,235,0.2); }  
   .btn.primary:hover { background:#1d4ed8; }  
-  
   .results-info { text-align:center; color: var(--muted); font-size:14px; margin:24px 0 8px 0; }  
-  
   .ai-summary { background: #e0f2fe; color: #0369a1; padding:16px 20px; border-radius: var(--radius); font-size:14px; margin-bottom:16px; line-height:1.5; cursor:pointer; position: relative; transition: max-height 0.3s ease; }  
   .ai-summary.collapsed { max-height: 60px; overflow: hidden; }  
   .ai-summary::after { content: '▼'; position: absolute; right:16px; bottom:16px; font-size:12px; }  
   .ai-summary.expanded::after { content: '▲'; }  
-  
   .breadcrumbs { display:flex; flex-wrap:wrap; gap:8px; font-size:13px; margin-bottom:16px; }  
-  .breadcrumbs button {  
-    background:#f3f4f6;  
-    border:1px solid #d1d5db;  
-    border-radius:12px;  
-    padding:4px 12px;  
-    cursor:pointer;  
-    transition:0.2s;  
-  }  
-  .breadcrumbs button.active,  
-  .breadcrumbs button:hover {  
-    background: var(--accent);  
-    color:#fff;  
-    border-color: var(--accent);  
-  }  
-  
+  .breadcrumbs button { background:#f3f4f6; border:1px solid #d1d5db; border-radius:12px; padding:4px 12px; cursor:pointer; transition:0.2s; }  
+  .breadcrumbs button.active, .breadcrumbs button:hover { background: var(--accent); color:#fff; border-color: var(--accent); }  
   .results-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:var(--gap); }  
-  
   .card { background: var(--card); border-radius: var(--radius); padding:20px; box-shadow:0 8px 24px var(--shadow); display:flex; flex-direction:column; position: relative; transition: all 0.2s ease; }  
   .card:hover { box-shadow:0 12px 32px rgba(0,0,0,0.12); transform: translateY(-2px); }  
   .card h3 { margin:0 0 8px 0; font-size:16px; }  
   .card p { margin:0 0 12px 0; color:var(--muted); font-size:14px; line-height:1.5; }  
-  
   .meta { display:flex; justify-content:space-between; font-size:12px; color:#9ca3af; }  
-  
   .link-btn { padding:6px 10px; border-radius:8px; border:1px solid #d1d5db; text-decoration:none; color: var(--accent); font-weight:600; transition: all 0.2s ease; }  
   .link-btn:hover { background: var(--accent); color:#fff; }  
-  
   .pdf-badge { position:absolute; top:12px; right:12px; background:#ef4444; color:#fff; font-size:11px; font-weight:700; padding:3px 6px; border-radius:6px; }  
-  
-  /* Loading Skeleton */  
   .skeleton { background:#e5e7eb; border-radius: var(--radius); animation:pulse 1.5s infinite ease-in-out; }  
   @keyframes pulse { 0% { opacity:.6; } 50% { opacity:1; } 100% { opacity:.6; } }  
   .skeleton-card { height:160px; padding:20px; }  
-  
-  /* Pagination */  
   .pagination { margin-top:30px; display:flex; justify-content:center; gap:12px; }  
   .pagination button { padding:10px 18px; border-radius: var(--radius); border:1px solid #d1d5db; background:#fff; cursor:pointer; }  
   .pagination button:hover { background:#f3f4f6; }  
-  
   footer { text-align:center; margin:40px 0 20px 0; font-size:13px; color: var(--muted); }  
-</style> 
-
- </head>  
+</style>  
+</head>  
 <body>  
 <header class="site-header">  
   <div class="container">  
     <span class="logo">📚 eLibrary AI</span>  
     <p class="tagline">Search books, articles & PDFs instantly — powered by AI.</p>  
   </div>  
-</header> 
+</header>  
 
- <main class="container">  
+<main class="container">  
   <section class="search-box">  
     <input id="searchInput" class="search-input" type="text" placeholder="Search e.g. Computer Engineering digital logic" />  
     <div class="controls">  
@@ -101,7 +71,7 @@
     </div>  
   </section>   
 
- <section id="resultsInfo" class="results-info hidden"></section>  
+  <section id="resultsInfo" class="results-info hidden"></section>  
   <section id="aiSummary" class="ai-summary collapsed hidden"></section>  
   <section id="breadcrumbs" class="breadcrumbs hidden"></section>  
   <section id="resultsGrid" class="results-grid"></section>  
@@ -116,9 +86,8 @@
   Built with Brave Search • Serpstack • Demo  
 </footer>
 
-
-  <script>
-const API_BASE = "https://e-library-18tg.onrender.com";
+<script>
+const API_BASE = "https://e-library-18tg.onrender.com"; // Always point to Render backend
 const searchInput = document.getElementById('searchInput');
 const searchBtn = document.getElementById('searchBtn');
 const pdfOnly = document.getElementById('pdfOnly');
@@ -135,7 +104,6 @@ let PAGE = 1;
 const PAGE_SIZE = 12;
 let activeSource = null;
 
-// Map sources into broader categories
 const SOURCE_CATEGORIES = {
   serpstack: "Web",
   brave: "Web",
@@ -148,18 +116,12 @@ const SOURCE_CATEGORIES = {
   unknown: "Other"
 };
 
-/* -----------------------------
-     CLEAN HTML
------------------------------- */
 function cleanHTML(str) {
   const tmp = document.createElement("div");
   tmp.innerHTML = str || "";
   return tmp.textContent || tmp.innerText || "";
 }
 
-/* -----------------------------
-   SKELETON LOADERS
------------------------------- */
 function showSkeleton() {
   resultsGrid.innerHTML = "";
   for (let i=0;i<6;i++){
@@ -169,17 +131,11 @@ function showSkeleton() {
   }
 }
 
-/* -----------------------------
-      SAVE STATE
------------------------------- */
 function saveState(q, data) {
   localStorage.setItem("elib_last_query", q);
   localStorage.setItem("elib_last_data", JSON.stringify(data));
 }
 
-/* -----------------------------
-      LOAD LAST STATE
------------------------------- */
 function loadLastState() {
   const q = localStorage.getItem("elib_last_query");
   const raw = localStorage.getItem("elib_last_data");
@@ -191,12 +147,9 @@ function loadLastState() {
   CURRENT_RESULTS = data.results || [];
   PAGE = 1;
 
-  renderResults(data);
+  renderResults({ originalQuery: q, summary: data.summary || "" });
 }
 
-/* -----------------------------
-   RENDER BREADCRUMBS
------------------------------- */
 function renderBreadcrumbs(items) {
   const categories = [...new Set(items.map(it => SOURCE_CATEGORIES[it.source?.toLowerCase()] || "Other"))];
   breadcrumbs.innerHTML = "";
@@ -215,14 +168,9 @@ function renderBreadcrumbs(items) {
   breadcrumbs.classList.remove("hidden");
 }
 
-/* -----------------------------
-      RENDER PAGINATED RESULTS
------------------------------- */
 function renderResults(data) {
   let items = CURRENT_RESULTS;
-  if (activeSource) {
-    items = items.filter(it => (SOURCE_CATEGORIES[it.source?.toLowerCase()] || "Other") === activeSource);
-  }
+  if (activeSource) items = items.filter(it => (SOURCE_CATEGORIES[it.source?.toLowerCase()] || "Other") === activeSource);
 
   const total = items.length;
   const start = (PAGE-1)*PAGE_SIZE;
@@ -295,9 +243,6 @@ function renderResults(data) {
   nextBtn.disabled = end>=total;
 }
 
-/* -----------------------------
-          SEARCH
------------------------------- */
 async function doSearch() {
   const q = searchInput.value.trim();
   if (!q) { alert("Please type a search term"); return; }
@@ -336,7 +281,7 @@ nextBtn.onclick = () => { PAGE++; renderResults({ originalQuery: searchInput.val
 searchBtn.onclick = doSearch;
 searchInput.addEventListener("keydown", e => { if(e.key==="Enter") doSearch(); });
 
-// Clear results on full page reload
+// Load last state safely on page load
 window.onload = () => {
   CURRENT_RESULTS = [];
   PAGE = 1;
@@ -346,10 +291,9 @@ window.onload = () => {
   breadcrumbs.classList.add("hidden");
   aiSummary.classList.add("hidden");
   pagination.classList.add("hidden");
-  localStorage.removeItem("elib_last_query");
-  localStorage.removeItem("elib_last_data");
+  loadLastState(); // only loads from localStorage, never calls relative /api
 };
 </script>
 
- </body>  
+</body>  
 </html>
