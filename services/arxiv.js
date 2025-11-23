@@ -1,5 +1,4 @@
 // services/arxiv.js
-import fetch from "node-fetch";
 import xml2js from "xml2js";
 
 export async function searchArxiv(query, limit = 5) {
