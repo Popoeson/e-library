@@ -1,7 +1,7 @@
 // services/googleBooks.js
 // No import needed — fetch is global in Node 18+
 
-const GOOGLE_API_KEY = process.env.GOOGLE_BOOKS_KEY || "";
+ const GOOGLE_API_KEY = process.env.GOOGLE_BOOKS_KEY || "";
 
 async function searchGoogleBooks(query, limit = 5) {
   try {
@@ -18,13 +18,18 @@ async function searchGoogleBooks(query, limit = 5) {
 
     const data = await res.json();
 
-    return (data.items || []).map(item => ({
-      title: item.volumeInfo.title,
-      link: item.volumeInfo.previewLink || item.volumeInfo.infoLink,
-      snippet: item.volumeInfo.description || item.volumeInfo.subtitle || "",
-      source: "googlebooks",
-      type: "book",
-    }));
+    return (data.items || []).map(item => {
+      const snippetRaw = item.volumeInfo.description || item.volumeInfo.subtitle || "";
+      const snippet = snippetRaw.length > 300 ? snippetRaw.slice(0, 300) + "…" : snippetRaw;
+
+      return {
+        title: item.volumeInfo.title || "Untitled",
+        link: item.volumeInfo.previewLink || item.volumeInfo.infoLink || "",
+        snippet,
+        source: "googlebooks",
+        type: "book",
+      };
+    });
 
   } catch (err) {
     console.error("Google Books Error:", err.message);
