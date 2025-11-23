@@ -1,5 +1,4 @@
 // services/crossref.js
-import fetch from "node-fetch";
 
 export async function searchCrossref(query, limit = 5) {
   try {
