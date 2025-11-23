@@ -18,48 +18,39 @@ if (!OPENROUTER_API_KEY || !OPENROUTER_API_URL) {
  * Rewrites user query into a concise, search-optimized form.
  */
 async function rewriteQuery(userQuery) {
+  userQuery = userQuery?.trim() || "general search";
   if (!OPENROUTER_API_KEY || !OPENROUTER_API_URL) return userQuery;
 
   try {
     const payload = {
-      model: "qwen/qwen-2.5-7b-instruct",  // <- Updated model ID
+      model: process.env.QWEN_MODEL || "qwen/qwen-2.5-7b-instruct",
       messages: [
-        {
-          role: "system",
-          content:
-            "Rewrite the user query into a very concise search query optimized for PDFs, textbooks, lecture notes, and academic resources."
-        },
-        {
-          role: "user",
-          content: userQuery
-        }
+        { role: "system", content: "Rewrite the user query into a concise, search-optimized query for PDFs, textbooks, lecture notes, and academic resources." },
+        { role: "user", content: userQuery }
       ],
       max_tokens: 120,
       temperature: 0
     };
 
     const resp = await axios.post(OPENROUTER_API_URL, payload, {
-      headers: {
-        Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json"
-      }
+      headers: { Authorization: `Bearer ${OPENROUTER_API_KEY}`, "Content-Type": "application/json" },
+      timeout: 10000
     });
 
     const output = resp?.data;
-    const text =
-      output?.choices?.[0]?.message?.content?.trim?.() ||
-      output?.choices?.[0]?.text?.trim?.() ||
+    return (
+      output?.choices?.[0]?.message?.content?.trim() ||
+      output?.choices?.[0]?.text?.trim() ||
       output?.output?.[0]?.content?.text ||
       output?.output?.[0]?.text ||
-      output?.result;
-
-    return text?.trim() || userQuery;
+      output?.result ||
+      userQuery
+    );
   } catch (err) {
     console.warn("⚠️ Qwen rewrite error:", err?.response?.data || err.message);
     return userQuery;
   }
 }
-
 /**
  * summarizeTopic
  * Generates a concise AI summary for a given topic/query.
