@@ -1,7 +1,7 @@
 // services/qwenModel.js
 /**
- * Wrapper for Qwen 2.2 via OpenRouter or compatible API.
- * Provides query rewriting and AI topic summarization.
+ * Wrapper for Qwen via OpenRouter (or compatible API).
+ * Supports query rewriting and topic summarization.
  */
 
 const axios = require("axios");
@@ -15,14 +15,14 @@ if (!OPENROUTER_API_KEY || !OPENROUTER_API_URL) {
 
 /**
  * rewriteQuery
- * Rewrites user query into a concise search-optimized form.
+ * Rewrites user query into a concise, search-optimized form.
  */
 async function rewriteQuery(userQuery) {
   if (!OPENROUTER_API_KEY || !OPENROUTER_API_URL) return userQuery;
 
   try {
     const payload = {
-      model: "qwen-2.2-instruct",
+      model: "qwen/qwen-2.5-7b-instruct",  // <- Updated model ID
       messages: [
         {
           role: "system",
@@ -46,8 +46,7 @@ async function rewriteQuery(userQuery) {
     });
 
     const output = resp?.data;
-
-    let text =
+    const text =
       output?.choices?.[0]?.message?.content?.trim?.() ||
       output?.choices?.[0]?.text?.trim?.() ||
       output?.output?.[0]?.content?.text ||
@@ -70,7 +69,7 @@ async function summarizeTopic(topic) {
 
   try {
     const payload = {
-      model: "qwen-2.2-instruct",
+      model: "qwen/qwen-2.5-7b-instruct",  // <- Updated model ID
       messages: [
         {
           role: "system",
