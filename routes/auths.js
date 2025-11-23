@@ -43,7 +43,7 @@ router.get(
 // -----------------------------
 // 3. Apple OAuth
 // -----------------------------
-router.get("/apple", passport.authenticate("apple"));
+/* router.get("/apple", passport.authenticate("apple"));
 
 router.post(
   "/apple/callback",
@@ -51,6 +51,6 @@ router.post(
   (req, res) => {
     res.redirect("/index.html");
   }
-);
+); */
 
 module.exports = router;
