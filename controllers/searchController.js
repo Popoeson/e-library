@@ -1,46 +1,116 @@
-require("dotenv").config();
-const path = require("path");
+// controllers/searchController.js
 const express = require("express");
-const cors = require("cors");
-const passport = require("passport");
-const mongoose = require("mongoose");
+const router = express.Router();
 
-// Load OAuth strategies
-require("./config/passport");
+const qwen = require("../services/qwenModel");
+const brave = require("../services/braveSearch");
+const serp = require("../services/serpstackModel");
 
-// Routes
-const searchRoutes = require("./controllers/searchController");
-const authRoutes = require("./routes/auths");
+const googleBooks = require("../services/googleBooks");
+const openLibrary = require("../services/openLibrary");
+const internetArchive = require("../services/internetArchive");
+// const core = require("../services/coreModel"); // optional
+const crossref = require("../services/crossref");
+const arxiv = require("../services/arxiv");
+const oer = require("../services/oerCommons");
 
-// MongoDB connection
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ MongoDB connected"))
-  .catch(err => console.error("❌ MongoDB connection error:", err));
+router.post("/", async (req, res) => {
+  try {
+    const { query, limit = 15, preferPdf = true } = req.body;
+    if (!query) return res.status(400).json({ error: "query is required" });
 
-const app = express();
-const PORT = process.env.PORT || 5000;
+    // 1. Rewrite query using Qwen
+    let rewritten = query;
+    try {
+      const rewrittenQuery = await qwen.rewriteQuery(query);
+      if (rewrittenQuery) rewritten = rewrittenQuery;
+    } catch (err) {
+      console.warn("Qwen rewrite failed:", err.message);
+    }
 
-// ======= MIDDLEWARE =======
-app.use(cors());
-app.use(express.json());
+    // 2. Optional PDF filter (applied to Brave)
+    const finalSearch = preferPdf ? `${rewritten} filetype:pdf` : rewritten;
 
-// Initialize passport (OAuth only — NO SESSIONS)
-app.use(passport.initialize());
+    // 3. Fetch main web results
+    const serpResults = await serp.searchSerpstack(rewritten, limit);
+    const braveResults = await brave.searchWeb(finalSearch, { limit });
 
-// ======= SERVE FRONTEND FILES =======
-app.use(express.static(path.join(__dirname)));
+    // 4. Fetch educational sources
+    const [
+      googleBooksResults,
+      openLibResults,
+      iaResults,
+      // coreResults,
+      crossrefResults,
+      arxivResults,
+      oerResults
+    ] = await Promise.all([
+      googleBooks.searchGoogleBooks(rewritten, limit),
+      openLibrary.searchOpenLibrary(rewritten, limit),
+      internetArchive.searchInternetArchive(rewritten, limit),
+      // core.search(rewritten, limit),
+      crossref.searchCrossref(rewritten, limit),
+      arxiv.searchArxiv(rewritten, limit),
+      oer.searchOERCommons(rewritten, limit)
+    ]);
 
-// ======= API ROUTES =======
-app.use("/api/search", searchRoutes);
-app.use("/auths", authRoutes);
+    // 5. Merge all results while avoiding duplicates
+    const seen = new Set();
+    const clean = [];
 
-// ======= FRONTEND CATCH-ALL =======
-// Only serve index.html for non-API/non-auth routes
-app.get(/^\/(?!api|auths).*/, (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
+    const pushUnique = (items) => {
+      items?.forEach(item => {
+        const url = item.link?.toLowerCase() || item.id?.toLowerCase();
+        if (!url) return;
+        if (!seen.has(url)) {
+          seen.add(url);
+          clean.push(item);
+        }
+      });
+    };
+
+    pushUnique(serpResults);
+    pushUnique(braveResults);
+    pushUnique(googleBooksResults);
+    pushUnique(openLibResults);
+    pushUnique(iaResults);
+    // pushUnique(coreResults);
+    pushUnique(crossrefResults);
+    pushUnique(arxivResults);
+    pushUnique(oerResults);
+
+    // 6. Count results per source
+    const sourcesCount = {
+      serpstack: serpResults.length,
+      brave: braveResults.length,
+      googleBooks: googleBooksResults.length,
+      openLibrary: openLibResults.length,
+      internetArchive: iaResults.length,
+      // core: coreResults.length,
+      crossref: crossrefResults.length,
+      arxiv: arxivResults.length,
+      oer: oerResults.length
+    };
+
+    // 7. Send final output
+    return res.json({
+      status: "success",
+      originalQuery: query,
+      rewrittenQuery: rewritten,
+      finalSearch,
+      resultsCount: clean.length,
+      sourcesCount,
+      results: clean
+    });
+
+  } catch (err) {
+    console.error("Search error:", err);
+    return res.status(500).json({
+      status: "error",
+      message: "Server error",
+      details: err.message
+    });
+  }
 });
 
-// ======= START SERVER =======
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+module.exports = router;
