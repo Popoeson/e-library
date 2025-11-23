@@ -6,37 +6,59 @@ const qwen = require("../services/qwenModel");
 const brave = require("../services/braveSearch");
 const serp = require("../services/serpstackModel");
 
+const googleBooks = require("../services/googleBooks");
+const openLibrary = require("../services/openLibrary");
+const internetArchive = require("../services/internetArchive");
+//const core = require("../services/coreModel");//
+const crossref = require("../services/crossref");
+const arxiv = require("../services/arxiv");
+const oer = require("../services/oerCommons");
+
 router.post("/", async (req, res) => {
   try {
     const { query, limit = 15, preferPdf = true } = req.body;
+    if (!query) return res.status(400).json({ error: "query is required" });
 
-    if (!query) {
-      return res.status(400).json({ error: "query is required" });
-    }
-
-    // 1. Rewrite query
+    // 1. Rewrite query using Qwen
     let rewritten = query;
     try {
       const s = await qwen.rewriteQuery(query);
       if (s) rewritten = s;
-    } catch {}
+    } catch (e) { console.warn("Qwen rewrite failed", e); }
 
-    // 2. Add pdf filter (optional)
+    // 2. Optional PDF filter
     const finalSearch = preferPdf ? `${rewritten} filetype:pdf` : rewritten;
 
-    // 3. Fetch Serpstack (top priority)
+    // 3. Fetch main web results
     const serpResults = await serp.searchSerpstack(rewritten, 5);
-
-    // 4. Fetch Brave results
     const braveResults = await brave.searchWeb(finalSearch, { limit });
 
-    // 5. Merge & remove duplicates (by URL)
+    // 4. Fetch educational sources (each returns array of objects with {title, link, snippet, type})
+    const [
+      googleBooksResults,
+      openLibResults,
+      iaResults,
+     // coreResults,//
+      crossrefResults,
+      arxivResults,
+      oerResults
+    ] = await Promise.all([
+      googleBooks.searchBooks(rewritten, limit),
+      openLibrary.searchBooks(rewritten, limit),
+      internetArchive.search(rewritten, limit),
+     // core.search(rewritten, limit),//
+      crossref.search(rewritten, limit),
+      arxiv.search(rewritten, limit),
+      oer.search(rewritten, limit)
+    ]);
+
+    // 5. Merge all results in priority order: Serpstack → Brave → Educational sources
     const seen = new Set();
     const clean = [];
 
     const pushUnique = (items) => {
       items.forEach(item => {
-        const url = item.link?.toLowerCase();
+        const url = item.link?.toLowerCase() || item.id?.toLowerCase();
         if (!url) return;
         if (!seen.has(url)) {
           seen.add(url);
@@ -45,21 +67,37 @@ router.post("/", async (req, res) => {
       });
     };
 
-    // Serpstack first
     pushUnique(serpResults);
-
-    // Then Brave
     pushUnique(braveResults);
+    pushUnique(googleBooksResults);
+    pushUnique(openLibResults);
+    pushUnique(iaResults);
+   // pushUnique(coreResults);//
+    pushUnique(crossrefResults);
+    pushUnique(arxivResults);
+    pushUnique(oerResults);
 
-    // 6. Send to frontend
+    // 6. Include counts per source for frontend display / breadcrumbs
+    const sourcesCount = {
+      serpstack: serpResults.length,
+      brave: braveResults.length,
+      googleBooks: googleBooksResults.length,
+      openLibrary: openLibResults.length,
+      internetArchive: iaResults.length,
+    //  core: coreResults.length,//
+      crossref: crossrefResults.length,
+      arxiv: arxivResults.length,
+      oer: oerResults.length
+    };
+
+    // 7. Send merged results to frontend
     return res.json({
       status: "success",
       originalQuery: query,
       rewrittenQuery: rewritten,
       finalSearch,
       resultsCount: clean.length,
-      serpCount: serpResults.length,
-      braveCount: braveResults.length,
+      sourcesCount,
       results: clean
     });
 
