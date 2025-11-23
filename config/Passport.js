@@ -32,7 +32,7 @@ passport.use(new GoogleStrategy({
 ));
 
 // Apple
-passport.use(new AppleStrategy({
+/* passport.use(new AppleStrategy({
     clientID: process.env.APPLE_CLIENT_ID,
     teamID: process.env.APPLE_TEAM_ID,
     keyID: process.env.APPLE_KEY_ID,
@@ -53,4 +53,4 @@ passport.use(new AppleStrategy({
       done(null, user);
     } catch(err) { done(err); }
   }
-));
+)); */
