@@ -1,7 +1,7 @@
 // config/passport.js
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
-/* const AppleStrategy = require("passport-apple").Strategy;*/
+// const AppleStrategy = require("passport-apple").Strategy; // Commented out for now
 const User = require("../model/user");
 
 // -----------------------------
@@ -26,7 +26,7 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: `${process.env.BACKEND_URL}/auths/google/callback` // full backend URL
+      callbackURL: "https://e-library-18tg.onrender.com/auths/google/callback" // exact backend URL registered in Google Cloud
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
@@ -38,7 +38,7 @@ passport.use(
         if (!user) {
           user = await User.create({
             name: profile.displayName,
-            email: profile.emails?.[0]?.value || "noemail@gmail.com",
+            email: profile.emails?.[0]?.value || `noemail-${profile.id}@gmail.com`,
             oauthProvider: "google",
             oauthId: profile.id
           });
@@ -53,7 +53,7 @@ passport.use(
 );
 
 // -----------------------------
-// APPLE OAUTH
+// APPLE OAUTH (optional)
 // -----------------------------
 /* passport.use(
   new AppleStrategy(
@@ -61,8 +61,8 @@ passport.use(
       clientID: process.env.APPLE_CLIENT_ID,
       teamID: process.env.APPLE_TEAM_ID,
       keyID: process.env.APPLE_KEY_ID,
-      privateKey: process.env.APPLE_PRIVATE_KEY.replace(/\\n/g, "\n"), // fix line breaks if copied from env
-      callbackURL: `${process.env.BACKEND_URL}/auths/apple/callback`,
+      privateKey: process.env.APPLE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+      callbackURL: "https://e-library-18tg.onrender.com/auths/apple/callback",
       passReqToCallback: false
     },
     async (accessToken, refreshToken, idToken, profile, done) => {
