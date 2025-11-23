@@ -10,7 +10,7 @@ require("./config/passport");
 
 // Routes
 const searchRoutes = require("./controllers/searchController");
-const authRoutes = require("./routes/auth");
+const authRoutes = require("./routes/auths");
 
 // MongoDB connection
 mongoose.connect(process.env.MONGO_URI)
