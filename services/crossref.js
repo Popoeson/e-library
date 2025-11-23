@@ -9,8 +9,8 @@ export async function searchCrossref(query, limit = 5) {
     const data = await res.json();
     return (data.message.items || []).map(item => ({
       title: item.title?.[0] || "Untitled",
-      link: item.URL || "",
-      snippet: item.abstract || "",
+      link: item.URL || (item.DOI ? `https://doi.org/${item.DOI}` : ""),
+      snippet: item.abstract ? item.abstract.replace(/<\/?[^>]+(>|$)/g, "") : "",
       source: "crossref",
       type: "journal",
     }));
