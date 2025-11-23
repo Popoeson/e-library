@@ -1,5 +1,4 @@
 // services/internetArchive.js
-import fetch from "node-fetch";
 
 export async function searchInternetArchive(query, limit = 5) {
   try {
