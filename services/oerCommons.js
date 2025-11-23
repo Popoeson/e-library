@@ -1,5 +1,4 @@
 // services/oerCommons.js
-import fetch from "node-fetch";
 
 export async function searchOERCommons(query, limit = 5) {
   try {
