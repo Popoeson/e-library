@@ -76,7 +76,7 @@
       const data = await res.json();
       if(data.status === 'success'){
         localStorage.setItem('elib_user', JSON.stringify(data.user));
-        window.location.href = '/index.html';
+        window.location.href = "https://e-library-two-tau.vercel.app/index.html";
       } else {
         alert(data.message || "Demo account creation failed");
       }
