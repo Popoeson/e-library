@@ -41,7 +41,23 @@
   .ai-summary::after { content: '▼'; position: absolute; right:16px; bottom:16px; font-size:12px; }
   .ai-summary.expanded::after { content: '▲'; }
 
-  .results-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:var(--gap); margin-top:16px; }
+  .breadcrumbs { display:flex; flex-wrap:wrap; gap:8px; font-size:13px; margin-bottom:16px; }
+  .breadcrumbs button {
+    background:#f3f4f6;
+    border:1px solid #d1d5db;
+    border-radius:12px;
+    padding:4px 12px;
+    cursor:pointer;
+    transition:0.2s;
+  }
+  .breadcrumbs button.active,
+  .breadcrumbs button:hover {
+    background: var(--accent);
+    color:#fff;
+    border-color: var(--accent);
+  }
+
+  .results-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:var(--gap); }
 
   .card { background: var(--card); border-radius: var(--radius); padding:20px; box-shadow:0 8px 24px var(--shadow); display:flex; flex-direction:column; position: relative; transition: all 0.2s ease; }
   .card:hover { box-shadow:0 12px 32px rgba(0,0,0,0.12); transform: translateY(-2px); }
@@ -56,36 +72,14 @@
   .pdf-badge { position:absolute; top:12px; right:12px; background:#ef4444; color:#fff; font-size:11px; font-weight:700; padding:3px 6px; border-radius:6px; }
 
   /* Loading Skeleton */
-  .skeleton {
-    background: #e5e7eb;
-    border-radius: var(--radius);
-    animation: pulse 1.5s infinite ease-in-out;
-  }
-  @keyframes pulse {
-    0% { opacity: .6; }
-    50% { opacity: 1; }
-    100% { opacity: .6; }
-  }
-  .skeleton-card {
-    height: 160px;
-    padding: 20px;
-  }
+  .skeleton { background:#e5e7eb; border-radius: var(--radius); animation:pulse 1.5s infinite ease-in-out; }
+  @keyframes pulse { 0% { opacity:.6; } 50% { opacity:1; } 100% { opacity:.6; } }
+  .skeleton-card { height:160px; padding:20px; }
 
   /* Pagination */
-  .pagination {
-    margin-top: 30px;
-    display: flex;
-    justify-content: center;
-    gap: 12px;
-  }
-  .pagination button {
-    padding: 10px 18px;
-    border-radius: var(--radius);
-    border: 1px solid #d1d5db;
-    background: #fff;
-    cursor: pointer;
-  }
-  .pagination button:hover { background: #f3f4f6; }
+  .pagination { margin-top:30px; display:flex; justify-content:center; gap:12px; }
+  .pagination button { padding:10px 18px; border-radius: var(--radius); border:1px solid #d1d5db; background:#fff; cursor:pointer; }
+  .pagination button:hover { background:#f3f4f6; }
 
   footer { text-align:center; margin:40px 0 20px 0; font-size:13px; color: var(--muted); }
 </style>
@@ -110,6 +104,7 @@
 
   <section id="resultsInfo" class="results-info hidden"></section>
   <section id="aiSummary" class="ai-summary collapsed hidden"></section>
+  <section id="breadcrumbs" class="breadcrumbs hidden"></section>
   <section id="resultsGrid" class="results-grid"></section>
 
   <div id="pagination" class="pagination hidden">
@@ -130,6 +125,7 @@ const pdfOnly = document.getElementById('pdfOnly');
 const resultsGrid = document.getElementById('resultsGrid');
 const resultsInfo = document.getElementById('resultsInfo');
 const aiSummary = document.getElementById('aiSummary');
+const breadcrumbs = document.getElementById('breadcrumbs');
 const pagination = document.getElementById('pagination');
 const prevBtn = document.getElementById('prevBtn');
 const nextBtn = document.getElementById('nextBtn');
@@ -137,6 +133,7 @@ const nextBtn = document.getElementById('nextBtn');
 let CURRENT_RESULTS = [];
 let PAGE = 1;
 const PAGE_SIZE = 12;
+let activeSource = null;
 
 /* -----------------------------
      CLEAN HTML
@@ -152,7 +149,7 @@ function cleanHTML(str) {
 ------------------------------ */
 function showSkeleton() {
   resultsGrid.innerHTML = "";
-  for (let i = 0; i < 6; i++) {
+  for (let i=0;i<6;i++){
     const block = document.createElement("div");
     block.className = "skeleton skeleton-card";
     resultsGrid.appendChild(block);
@@ -185,15 +182,37 @@ function loadLastState() {
 }
 
 /* -----------------------------
+   RENDER BREADCRUMBS
+------------------------------ */
+function renderBreadcrumbs(items) {
+  const sources = [...new Set(items.map(i=>i.source||"Unknown"))];
+  breadcrumbs.innerHTML = "";
+  sources.forEach(src => {
+    const btn = document.createElement("button");
+    btn.textContent = src;
+    btn.className = src === activeSource ? "active" : "";
+    btn.onclick = () => {
+      activeSource = (src === activeSource) ? null : src;
+      renderResults({ originalQuery: searchInput.value, summary: aiSummary.textContent });
+    };
+    breadcrumbs.appendChild(btn);
+  });
+  breadcrumbs.classList.remove("hidden");
+}
+
+/* -----------------------------
       RENDER PAGINATED RESULTS
 ------------------------------ */
 function renderResults(data) {
-  const items = CURRENT_RESULTS;
-  const total = items.length;
+  let items = CURRENT_RESULTS;
+  if (activeSource) {
+    items = items.filter(it => (it.source || "Unknown") === activeSource);
+  }
 
-  const start = (PAGE - 1) * PAGE_SIZE;
-  const end = start + PAGE_SIZE;
-  const pageItems = items.slice(start, end);
+  const total = items.length;
+  const start = (PAGE-1)*PAGE_SIZE;
+  const end = start+PAGE_SIZE;
+  const pageItems = items.slice(start,end);
 
   resultsGrid.innerHTML = "";
   resultsInfo.textContent = `Showing ${items.length} results for "${data.originalQuery}"`;
@@ -210,10 +229,14 @@ function renderResults(data) {
   if (pageItems.length === 0) {
     resultsGrid.innerHTML = '<p style="grid-column:1/-1;padding:18px;color:#6b7280">No results found.</p>';
     pagination.classList.add("hidden");
+    breadcrumbs.classList.add("hidden");
     return;
   }
 
-  pageItems.forEach(it => {
+  // Render breadcrumbs
+  renderBreadcrumbs(items);
+
+  pageItems.forEach(it=>{
     const card = document.createElement("div");
     card.className = "card";
 
@@ -237,13 +260,7 @@ function renderResults(data) {
 
     const source = document.createElement("div");
     const hostname = it.link ? new URL(it.link).hostname : "";
-
-    if (it.source === "serpstack") {
-      source.textContent = `Serpstack | ${hostname}`;
-    } else {
-      source.textContent = hostname || it.source || "Unknown";
-    }
-
+    source.textContent = (it.source === "serpstack") ? `Serpstack | ${hostname}` : hostname || it.source || "Unknown";
     meta.appendChild(source);
 
     const actions = document.createElement("div");
@@ -256,14 +273,12 @@ function renderResults(data) {
 
     meta.appendChild(actions);
     card.appendChild(meta);
-
     resultsGrid.appendChild(card);
   });
 
-  // Pagination visibility
   pagination.classList.remove("hidden");
-  prevBtn.disabled = PAGE === 1;
-  nextBtn.disabled = end >= total;
+  prevBtn.disabled = PAGE===1;
+  nextBtn.disabled = end>=total;
 }
 
 /* -----------------------------
@@ -277,6 +292,7 @@ async function doSearch() {
   aiSummary.classList.add("hidden");
   resultsInfo.classList.add("hidden");
   pagination.classList.add("hidden");
+  breadcrumbs.classList.add("hidden");
 
   try {
     const resp = await fetch(`${API_BASE}/api/search`, {
@@ -286,18 +302,17 @@ async function doSearch() {
     });
 
     if (!resp.ok) throw new Error("Search failed");
-
     const data = await resp.json();
 
     CURRENT_RESULTS = data.results || [];
     PAGE = 1;
+    activeSource = null;
 
     saveState(q, data);
     renderResults(data);
   }
-  catch (err) {
-    resultsGrid.innerHTML =
-      '<p style="grid-column:1/-1;padding:18px;color:#ff4d4f">Search failed — network/server error</p>';
+  catch(err){
+    resultsGrid.innerHTML = '<p style="grid-column:1/-1;padding:18px;color:#ff4d4f">Search failed — network/server error</p>';
   }
 }
 
@@ -305,7 +320,7 @@ prevBtn.onclick = () => { PAGE--; renderResults({ originalQuery: searchInput.val
 nextBtn.onclick = () => { PAGE++; renderResults({ originalQuery: searchInput.value, summary: aiSummary.textContent }); };
 
 searchBtn.onclick = doSearch;
-searchInput.addEventListener("keydown", e => { if (e.key === "Enter") doSearch(); });
+searchInput.addEventListener("keydown", e => { if(e.key==="Enter") doSearch(); });
 
 // Load last search
 loadLastState();
