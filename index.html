@@ -102,9 +102,9 @@ function toggleSummary() {
   aiSummary.classList.toggle('expanded');
 }
 
-/* -------------------------------
-   PERSIST SEARCH IN LOCALSTORAGE
---------------------------------*/
+/* -----------------------------
+     PERSIST SEARCH STATE
+------------------------------ */
 function saveState(q, data) {
   localStorage.setItem("elib_last_query", q);
   localStorage.setItem("elib_last_data", JSON.stringify(data));
@@ -114,11 +114,12 @@ function loadLastState() {
   const q = localStorage.getItem("elib_last_query");
   const raw = localStorage.getItem("elib_last_data");
   if (!q || !raw) return;
+
   searchInput.value = q;
   renderResults(JSON.parse(raw));
 }
 
-/* ------------------------------- */
+/* ------------------------------ */
 
 function renderResults(data) {
   const items = data.results || [];
@@ -127,11 +128,7 @@ function renderResults(data) {
   resultsInfo.classList.remove('hidden');
 
   // AI summary fallback
-  if (data.summary) {
-    aiSummary.textContent = cleanHTML(data.summary);
-  } else {
-    aiSummary.textContent = "No summary available.";
-  }
+  aiSummary.textContent = data.summary ? cleanHTML(data.summary) : "No summary available.";
   aiSummary.classList.remove('hidden');
   aiSummary.classList.add('collapsed');
   aiSummary.onclick = toggleSummary;
@@ -164,11 +161,16 @@ function renderResults(data) {
     meta.className = 'meta';
 
     const source = document.createElement('div');
-    // FIX FOR SERPSTACK → show domain
+
     const hostname = it.link ? new URL(it.link).hostname : "";
-    source.textContent = it.source === "serpstack" 
-      ? `Serpstack | ${hostname}`
-      : (it.source || hostname);
+
+    // Correct Serpstack source
+    if (it.source === "serpstack") {
+      source.textContent = `Serpstack | ${hostname}`;
+    } else {
+      source.textContent = hostname || it.source || "Unknown";
+    }
+
     meta.appendChild(source);
 
     const actions = document.createElement('div');
@@ -216,7 +218,8 @@ async function doSearch() {
 searchBtn.addEventListener('click', doSearch);
 searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
 
-loadLastState();  // restore previous results automatically
+/* Load previous search immediately */
+loadLastState();
 </script>
 
 </body>
