@@ -4,64 +4,71 @@ const router = express.Router();
 
 const qwen = require("../services/qwenModel");
 const brave = require("../services/braveSearch");
+const serp = require("../services/serpstackModel");
 
-/**
- * POST /api/search
- * Body: { query: string, limit?: number, preferPdf?: boolean }
- */
 router.post("/", async (req, res) => {
   try {
-    const { query, limit = 10, preferPdf = true } = req.body || {};
+    const { query, limit = 15, preferPdf = true } = req.body;
 
-    if (!query || typeof query !== "string") {
-      return res.status(400).json({ error: "query (string) is required" });
+    if (!query) {
+      return res.status(400).json({ error: "query is required" });
     }
 
-    // STEP 1 — Rewrite query using Qwen for better search accuracy
+    // 1. Rewrite query
     let rewritten = query;
     try {
-      const suggestion = await qwen.rewriteQuery(query);
-      if (suggestion && typeof suggestion === "string" && suggestion.trim().length > 0) {
-        rewritten = suggestion.trim();
-      }
-    } catch (rewriteError) {
-      console.warn("Qwen rewrite failed:", rewriteError.message || rewriteError);
-    }
+      const s = await qwen.rewriteQuery(query);
+      if (s) rewritten = s;
+    } catch {}
 
-    // STEP 2 — Optionally enhance search for PDFs
-    const searchString = preferPdf ? `${rewritten} filetype:pdf` : rewritten;
+    // 2. Add pdf filter (optional)
+    const finalSearch = preferPdf ? `${rewritten} filetype:pdf` : rewritten;
 
-    // STEP 3 — Perform Brave Search
-    const results = await brave.searchWeb(searchString, { limit });
+    // 3. Fetch Serpstack (top priority)
+    const serpResults = await serp.searchSerpstack(rewritten, 5);
 
-    // STEP 4 — Fetch AI topic summary
-    let summary = "";
-    try {
-      const summaryResponse = await qwen.summarizeTopic(rewritten); // make sure your qwenModel has this method
-      if (summaryResponse && typeof summaryResponse === "string") {
-        summary = summaryResponse.trim();
-      }
-    } catch (summaryError) {
-      console.warn("Qwen summary failed:", summaryError.message || summaryError);
-    }
+    // 4. Fetch Brave results
+    const braveResults = await brave.searchWeb(finalSearch, { limit });
 
-    // STEP 5 — Return everything to frontend
+    // 5. Merge & remove duplicates (by URL)
+    const seen = new Set();
+    const clean = [];
+
+    const pushUnique = (items) => {
+      items.forEach(item => {
+        const url = item.link?.toLowerCase();
+        if (!url) return;
+        if (!seen.has(url)) {
+          seen.add(url);
+          clean.push(item);
+        }
+      });
+    };
+
+    // Serpstack first
+    pushUnique(serpResults);
+
+    // Then Brave
+    pushUnique(braveResults);
+
+    // 6. Send to frontend
     return res.json({
       status: "success",
       originalQuery: query,
       rewrittenQuery: rewritten,
-      finalSearch: searchString,
-      summary,           // <-- send AI overview to frontend
-      resultsCount: results.length,
-      results
+      finalSearch,
+      resultsCount: clean.length,
+      serpCount: serpResults.length,
+      braveCount: braveResults.length,
+      results: clean
     });
 
   } catch (err) {
-    console.error("SEARCH ERROR:", err);
+    console.error("Search error:", err);
     return res.status(500).json({
       status: "error",
-      message: "An error occurred while searching",
-      details: err.message || err
+      message: "Server error",
+      details: err.message
     });
   }
 });
