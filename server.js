@@ -35,7 +35,8 @@ app.use("/api/search", searchRoutes);
 app.use("/auths", authRoutes);
 
 // ======= FRONTEND CATCH-ALL =======
-app.get("*", (req, res) => {
+// Only serve index.html for non-API/non-auth routes
+app.get(/^\/(?!api|auths).*/, (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
