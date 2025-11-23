@@ -12,11 +12,6 @@ if (!BRAVE_API_KEY || !BRAVE_SEARCH_URL) {
   console.warn("⚠️ Warning: BRAVE_API_KEY or BRAVE_SEARCH_URL missing.");
 }
 
-/**
- * searchWeb
- * @param {string} q
- * @param {object} opts
- */
 async function searchWeb(q, opts = {}) {
   const limit = opts.limit || 10;
   if (!BRAVE_API_KEY || !BRAVE_SEARCH_URL) return [];
@@ -32,46 +27,21 @@ async function searchWeb(q, opts = {}) {
     });
 
     const data = resp?.data;
+    const rawItems = data?.web?.results || data?.results || data?.items || [];
 
-    // Normalize Brave response — common shapes include:
-    // data.web.results[], data.results[], data.items[]
-    const rawItems =
-      data?.web?.results ||
-      data?.results ||
-      data?.items ||
-      [];
+    return rawItems.slice(0, limit).map(item => {
+      const title = item.title || item.name || item.headline || item.snippet || "";
+      const link = item.url || item.link || item.canonical || item.canonicalUrl || "";
+      const snippet = item.snippet || item.excerpt || item.description || item.summary || "";
 
-    const items = rawItems.slice(0, limit).map(item => {
-      const title =
-        item.title ||
-        item.name ||
-        item.headline ||
-        item.snippet ||
-        "";
+      let domain = "";
+      try { domain = link ? new URL(link).hostname : ""; } catch {}
 
-      const link =
-        item.url ||
-        item.link ||
-        item.canonical ||
-        item.canonicalUrl ||
-        "";
+      const source = item.domain || item.source || domain;
 
-      const snippet =
-        item.snippet ||
-        item.excerpt ||
-        item.description ||
-        item.summary ||
-        "";
-
-      const source =
-        item.domain ||
-        item.source ||
-        (link ? new URL(link).hostname : "");
-
-      return { title, link, snippet, source };
+      return { title, link, snippet, source, type: "web" };
     });
 
-    return items;
   } catch (err) {
     console.error("❌ Brave search error:", err?.response?.data || err.message);
     return [];
