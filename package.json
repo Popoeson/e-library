@@ -16,6 +16,7 @@
     "xml2js": "^0.6.2",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
-    "passport-apple": "^2.0.0"
+    "passport-apple": "^2.0.0",
+    "mongoose": "^8.3.1"
   }
 }
