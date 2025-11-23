@@ -32,7 +32,7 @@ app.use(express.static(path.join(__dirname)));
 
 // ======= API ROUTES =======
 app.use("/api/search", searchRoutes);
-app.use("/auth", authRoutes);
+app.use("/auths", authRoutes);
 
 // ======= FRONTEND CATCH-ALL =======
 app.get("*", (req, res) => {
