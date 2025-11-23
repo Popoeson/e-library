@@ -8,9 +8,9 @@ export async function searchOERCommons(query, limit = 5) {
 
     const data = await res.json();
     return (data.data || []).map(item => ({
-      title: item.title,
+      title: item.title || "Untitled",
       link: item.url || "",
-      snippet: item.description || "",
+      snippet: item.description ? item.description.replace(/<\/?[^>]+(>|$)/g, "") : "",
       source: "oercommons",
       type: item.type || "handout",
     }));
