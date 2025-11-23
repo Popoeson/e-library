@@ -7,10 +7,10 @@ export async function searchInternetArchive(query, limit = 5) {
     if (!res.ok) throw new Error("Internet Archive search failed");
 
     const data = await res.json();
-    return data.response.docs.map(item => ({
-      title: item.title || item.identifier,
+    return (data.response.docs || []).map(item => ({
+      title: item.title || item.identifier || "Untitled",
       link: item.identifier ? `https://archive.org/details/${item.identifier}` : "",
-      snippet: item.description || "",
+      snippet: item.description ? item.description.replace(/<\/?[^>]+(>|$)/g, "").slice(0, 300) : "",
       source: "internetarchive",
       type: item.mediatype || "pdf",
     }));
