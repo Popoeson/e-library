@@ -90,13 +90,13 @@
 
 <script>
   // OAuth buttons
-  document.getElementById('googleSignup').onclick = () => { window.location.href = '/auth/google'; };
-  document.getElementById('appleSignup').onclick = () => { window.location.href = '/auth/apple'; };
+  document.getElementById('googleSignup').onclick = () => { window.location.href = '/auths/google'; };
+  document.getElementById('appleSignup').onclick = () => { window.location.href = '/auths/apple'; };
 
   // Demo account
   document.getElementById('demoSignup').onclick = async () => {
     try {
-      const res = await fetch('/auth/demo', { method:'POST' });
+      const res = await fetch('/auths/demo', { method:'POST' });
       const data = await res.json();
       if(data.status === 'success'){
         localStorage.setItem('elib_user', JSON.stringify(data.user));
@@ -121,7 +121,7 @@
     }
 
     try {
-      const res = await fetch('/auth/signup', {
+      const res = await fetch('/auths/signup', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ name, email, password })
