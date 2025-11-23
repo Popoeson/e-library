@@ -17,24 +17,22 @@ const oer = require("../services/oerCommons");
 router.post("/", async (req, res) => {
   try {
     const { query, limit = 15, preferPdf = true } = req.body;
-    if (!query) {
-      return res.status(400).json({ error: "query is required" });
-    }
+    if (!query) return res.status(400).json({ error: "query is required" });
 
     // 1. Rewrite query using Qwen
     let rewritten = query;
     try {
-      const s = await qwen.rewriteQuery(query);
-      if (s) rewritten = s;
-    } catch (e) {
-      console.warn("Qwen rewrite failed:", e.message);
+      const rewrittenQuery = await qwen.rewriteQuery(query);
+      if (rewrittenQuery) rewritten = rewrittenQuery;
+    } catch (err) {
+      console.warn("Qwen rewrite failed:", err.message);
     }
 
-    // 2. Optional PDF filter
+    // 2. Optional PDF filter (applied to Brave)
     const finalSearch = preferPdf ? `${rewritten} filetype:pdf` : rewritten;
 
     // 3. Fetch main web results
-    const serpResults = await serp.searchSerpstack(rewritten, 5);
+    const serpResults = await serp.searchSerpstack(rewritten, limit);
     const braveResults = await brave.searchWeb(finalSearch, { limit });
 
     // 4. Fetch educational sources
@@ -47,16 +45,16 @@ router.post("/", async (req, res) => {
       arxivResults,
       oerResults
     ] = await Promise.all([
-      googleBooks.searchGoogleBooks(rewritten, limit),   // FIXED
-      openLibrary.searchBooks(rewritten, limit),
-      internetArchive.search(rewritten, limit),
+      googleBooks.searchGoogleBooks(rewritten, limit),
+      openLibrary.searchOpenLibrary(rewritten, limit),
+      internetArchive.searchInternetArchive(rewritten, limit),
       // core.search(rewritten, limit),
-      crossref.search(rewritten, limit),
-      arxiv.search(rewritten, limit),
-      oer.search(rewritten, limit)
+      crossref.searchCrossref(rewritten, limit),
+      arxiv.searchArxiv(rewritten, limit),
+      oer.searchOERCommons(rewritten, limit)
     ]);
 
-    // 5. Merge all results with duplication prevention
+    // 5. Merge all results while avoiding duplicates
     const seen = new Set();
     const clean = [];
 
