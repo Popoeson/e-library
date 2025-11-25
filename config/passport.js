@@ -1,7 +1,7 @@
 // config/passport.js
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
-// const AppleStrategy = require("passport-apple").Strategy; // Commented out for now
+// const AppleStrategy = require("passport-apple").Strategy; 
 const User = require("../model/user");
 
 // -----------------------------
@@ -19,14 +19,20 @@ passport.deserializeUser(async (id, done) => {
 });
 
 // -----------------------------
-// GOOGLE OAUTH
+// GOOGLE OAUTH (updated)
 // -----------------------------
 passport.use(
   new GoogleStrategy(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: "https://e-library-18tg.onrender.com/auths/google/callback" // exact backend URL registered in Google Cloud
+      callbackURL: "https://e-library-18tg.onrender.com/auths/google/callback",
+
+      // 🔥 FORCE GOOGLE TO ASK AGAIN EVERY TIME
+      prompt: "select_account",
+
+      // recommended scopes
+      scope: ["profile", "email"]
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
@@ -55,7 +61,8 @@ passport.use(
 // -----------------------------
 // APPLE OAUTH (optional)
 // -----------------------------
-/* passport.use(
+/*
+passport.use(
   new AppleStrategy(
     {
       clientID: process.env.APPLE_CLIENT_ID,
@@ -87,6 +94,7 @@ passport.use(
       }
     }
   )
-); */
+);
+*/
 
 module.exports = passport;
