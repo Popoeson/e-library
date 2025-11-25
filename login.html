@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>E-Library — Login</title>
+
+<style>
+  :root {
+    --bg: #f4f6fa;
+    --card: #fff;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --shadow: rgba(0,0,0,0.08);
+    --radius: 14px;
+    --container-width: 400px;
+  }
+
+  * { box-sizing: border-box; }
+  body, html { margin:0; padding:0; font-family: Inter, sans-serif; background: var(--bg); display:flex; justify-content:center; align-items:center; height:100vh; }
+
+  .container { background: var(--card); width:100%; max-width: var(--container-width); padding:32px; border-radius:var(--radius); box-shadow:0 12px 32px var(--shadow); text-align:center; }
+
+  .logo { font-size:28px; font-weight:700; margin-bottom:8px; display:block; }
+  .tagline { font-size:14px; color: var(--muted); margin-bottom:24px; }
+
+  .oauth-btn { 
+    display:flex; 
+    align-items:center; 
+    justify-content:center; 
+    gap:8px; 
+    padding:12px; 
+    margin:12px 0; 
+    border-radius: var(--radius); 
+    cursor:pointer; 
+    border:1px solid #d1d5db; 
+    transition: all 0.2s ease; 
+    font-weight:600; 
+  }
+  .oauth-btn img { width:20px; height:20px; }
+
+  .oauth-btn.google { background:#fff; color:#000; }
+  .oauth-btn.google:hover { background:#f3f4f6; }
+
+  .oauth-btn.apple { background:#000; color:#fff; }
+  .oauth-btn.apple:hover { opacity:0.85; }
+
+  .oauth-btn.demo { background:#10b981; color:#fff; }
+  .oauth-btn.demo:hover { opacity:0.85; }
+</style>
+</head>
+
+<body>
+<div class="container">
+  <span class="logo">📚 eLibrary AI</span>
+  <p class="tagline">Login to access your library dashboard</p>
+
+  <!-- ONLY OAUTH (no email/password) -->
+  <div class="oauth-btn google" id="googleLogin">
+    <img src="https://img.icons8.com/color/48/000000/google-logo.png" />
+    Continue with Google
+  </div>
+
+  <div class="oauth-btn apple" id="appleLogin">
+    <img src="https://img.icons8.com/ios-filled/50/ffffff/mac-os.png" />
+    Continue with Apple
+  </div>
+
+  <div class="oauth-btn demo" id="demoLogin">
+    🧪 Try Demo Account
+  </div>
+</div>
+
+<script>
+  const googleBtn = document.getElementById('googleLogin');
+  const appleBtn = document.getElementById('appleLogin');
+  const demoBtn = document.getElementById('demoLogin');
+
+  // **FULL BACKEND URL**
+  const BACKEND = "https://e-library-18tg.onrender.com";
+
+  googleBtn.onclick = () => {
+    window.location.href = `${BACKEND}/auths/google`;
+  };
+
+  appleBtn.onclick = () => {
+    window.location.href = `${BACKEND}/auths/apple`;
+  };
+
+  demoBtn.onclick = async () => {
+    try {
+      const res = await fetch(`${BACKEND}/auths/demo`, { method:'POST' });
+      const data = await res.json();
+
+      if (data.status === 'success') {
+        localStorage.setItem('elib_user', JSON.stringify(data.user));
+        window.location.href = "/index.html";
+      } else {
+        alert(data.message || "Demo login failed");
+      }
+    } catch(err){
+      alert("Demo login failed — network/server error");
+    }
+  };
+</script>
+
+</body>
+</html>
