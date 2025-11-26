@@ -100,13 +100,7 @@ document.getElementById('demoSignup').onclick = async () => {
   }
 };
 
-// Optional: Check if user already logged in
-window.onload = () => {
-  const existingUser = localStorage.getItem('elib_user');
-  if(existingUser){
-    window.location.href = "https://e-library-two-tau.vercel.app/index.html";
-  }
-};
+// ❌ Removed the automatic redirect on page load
 </script>
 </body>
 </html>
