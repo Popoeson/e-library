@@ -84,55 +84,41 @@
   <p class="signup-link">Don't have an account? <a href="register.html">Sign up</a></p>
 </div>
 
+
 <script>
-  // OAuth buttons
-  document.getElementById('googleLogin').onclick = () => { window.location.href = '/auth/google'; };
-  document.getElementById('appleLogin').onclick = () => { window.location.href = '/auth/apple'; };
+const API_BASE = "https://e-library-18tg.onrender.com";
 
-  // Demo account
-  document.getElementById('demoLogin').onclick = async () => {
-    try {
-      const res = await fetch('/auth/demo', { method:'POST' });
-      const data = await res.json();
-      if(data.status === 'success'){
-        localStorage.setItem('elib_user', JSON.stringify(data.user));
-        window.location.href = '/index.html';
-      } else {
-        alert(data.message || "Demo account creation failed");
-      }
-    } catch(err){
-      alert("Demo account creation failed — network/server error");
+// OAuth buttons
+document.getElementById('googleLogin').onclick = () => { 
+  window.location.href = `${API_BASE}/auths/google?prompt=select_account`; 
+};
+
+document.getElementById('appleLogin').onclick = () => { 
+  window.location.href = `${API_BASE}/auths/apple`;
+};
+
+// Demo login
+document.getElementById('demoLogin').onclick = async () => {
+  try {
+    const res = await fetch(`${API_BASE}/auths/demo`, { method:'POST' });
+    const data = await res.json();
+
+    if(data.status === 'success'){
+      // save properly
+      localStorage.setItem("elib_user", JSON.stringify(data.user));
+      localStorage.setItem("elib_user_name", data.user.name || "");
+      localStorage.setItem("elib_user_photo", data.user.photo || "");
+
+      window.location.href = "index.html";
+    } 
+    else {
+      alert(data.message || "Demo login failed");
     }
-  };
 
-  // Email login
-  document.getElementById('loginBtn').onclick = async () => {
-    const email = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value.trim();
-
-    if(!email || !password){
-      alert("Please fill all fields");
-      return;
-    }
-
-    try {
-      const res = await fetch('/auth/login', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ email, password })
-      });
-      const data = await res.json();
-
-      if(data.status === 'success'){
-        localStorage.setItem('elib_user', JSON.stringify(data.user));
-        window.location.href = '/index.html';
-      } else {
-        alert(data.message || "Login failed");
-      }
-    } catch(err){
-      alert("Login failed — network/server error");
-    }
-  };
+  } catch(err){
+    alert("Demo login failed — network/server error");
+  }
+};
 </script>
 </body>
 </html>
