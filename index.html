@@ -65,9 +65,7 @@
     flex-direction: column;
     overflow: hidden;
   }
-  .dropdown.open {
-    display: flex;
-  }
+  .dropdown.open { display: flex; }
   .dropdown a {
     padding: 12px 16px;
     text-decoration: none;
@@ -76,12 +74,8 @@
     border-bottom: 1px solid #f3f4f6;
     transition: background 0.2s;
   }
-  .dropdown a:hover {
-    background: #f3f4f6;
-  }
-  .dropdown a:last-child {
-    border-bottom: none;
-  }
+  .dropdown a:hover { background: #f3f4f6; }
+  .dropdown a:last-child { border-bottom:none; }
 
   /* ---------------- EXISTING DESIGN BELOW ---------------- */
   .site-header { text-align:center; padding:60px 0 40px 0; }  
@@ -168,6 +162,20 @@
 </footer>
 
 <script>
+
+/* ------------------------------------------------------
+   FORCE LOGIN: Google OR Apple OR Demo
+------------------------------------------------------ */
+(function enforceLogin() {
+  const g = localStorage.getItem("elib_user_google");
+  const a = localStorage.getItem("elib_user_apple");
+  const d = localStorage.getItem("elib_demo_account");
+
+  if (!g && !a && !d) {
+    window.location.href = "login.html";
+  }
+})();
+
 /* ------------------ USER HEADER LOGIC ------------------- */
 const userArea = document.getElementById("userArea");
 const displayName = document.getElementById("displayName");
@@ -176,29 +184,37 @@ const dropdown = document.getElementById("dropdownMenu");
 const logoutBtn = document.getElementById("logoutBtn");
 
 function loadUser() {
-  const name = localStorage.getItem("elib_user_name");
-  const photo = localStorage.getItem("elib_user_photo");
+  let name =
+    localStorage.getItem("elib_user_name") ||
+    localStorage.getItem("elib_demo_name");
+  let photo =
+    localStorage.getItem("elib_user_photo") ||
+    "https://www.gstatic.com/images/branding/product/1x/avatar_circle_blue_512dp.png";
 
   if (name) {
     displayName.textContent = name;
-    displayPhoto.src = photo || "https://www.gstatic.com/images/branding/product/1x/avatar_circle_blue_512dp.png";
+    displayPhoto.src = photo;
     userArea.style.display = "flex";
   }
 }
 
-// toggle dropdown
 userArea.onclick = () => dropdown.classList.toggle("open");
 
-// logout
 logoutBtn.onclick = () => {
   localStorage.removeItem("elib_user_name");
   localStorage.removeItem("elib_user_photo");
+  localStorage.removeItem("elib_user_google");
+  localStorage.removeItem("elib_user_apple");
+  localStorage.removeItem("elib_demo_account");
+  localStorage.removeItem("elib_demo_name");
+
   window.location.href = "login.html";
 };
 
 loadUser();
 
-/* ------------------ YOUR ORIGINAL SEARCH ENGINE JS BELOW ------------------ */
+/* ------------------ SEARCH SYSTEM JS (unchanged) ------------------ */
+
 const API_BASE = "https://e-library-18tg.onrender.com";
 const searchInput = document.getElementById('searchInput');
 const searchBtn = document.getElementById('searchBtn');
@@ -405,7 +421,7 @@ window.onload = () => {
   pagination.classList.add("hidden");
   loadLastState();
 };
-</script>
 
-</body>  
+</script>
+</body>
 </html>
