@@ -69,38 +69,39 @@
 </div>
 
 <script>
-const API_BASE = "https://e-library-18tg.onrender.com"; // backend URL
+const API_BASE = "https://e-library-18tg.onrender.com";
 
 // OAuth buttons
 document.getElementById('googleSignup').onclick = () => { 
-  window.location.href = `${API_BASE}/auths/google`; 
+  window.location.href = `${API_BASE}/auths/google?prompt=select_account`; 
 };
 
 document.getElementById('appleSignup').onclick = () => { 
-  window.location.href = `${API_BASE}/auths/apple`; 
+  window.location.href = `${API_BASE}/auths/apple`;
 };
 
-// Demo account signup
+// Demo signup
 document.getElementById('demoSignup').onclick = async () => {
   try {
     const res = await fetch(`${API_BASE}/auths/demo`, { method:'POST' });
     const data = await res.json();
 
     if(data.status === 'success'){
-      // Save user info to localStorage
-      localStorage.setItem('elib_user', JSON.stringify(data.user));
+      // save properly
+      localStorage.setItem("elib_user", JSON.stringify(data.user));
+      localStorage.setItem("elib_user_name", data.user.name || "");
+      localStorage.setItem("elib_user_photo", data.user.photo || "");
 
-      // Redirect to index page
-      window.location.href = "https://e-library-two-tau.vercel.app/index.html";
-    } else {
-      alert(data.message || "Demo account creation failed");
+      window.location.href = "index.html";
+    } 
+    else {
+      alert(data.message || "Demo account failed");
     }
+
   } catch(err){
     alert("Demo account creation failed — network/server error");
   }
 };
-
-// ❌ Removed the automatic redirect on page load
 </script>
 </body>
 </html>
