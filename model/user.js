@@ -15,6 +15,8 @@ const userSchema = new mongoose.Schema({
 
   oauthId: { type: String, required: true },
 
+  photo: { type: String, default: null }, // <-- ⭐ NEW FIELD
+
   searchHistory: [searchHistorySchema],
 
   createdAt: { type: Date, default: Date.now }
