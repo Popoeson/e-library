@@ -19,90 +19,78 @@
   * { box-sizing: border-box; }
   body, html { margin:0; padding:0; font-family: Inter, sans-serif; background: var(--bg); display:flex; justify-content:center; align-items:center; height:100vh; }
 
-  .container { background: var(--card); width:100%; max-width: var(--container-width); padding:32px; border-radius:var(--radius); box-shadow:0 12px 32px var(--shadow); text-align:center; }
+  .container { 
+    background: var(--card); 
+    width:100%; 
+    max-width: var(--container-width); 
+    padding:32px; 
+    border-radius:var(--radius); 
+    box-shadow:0 12px 32px var(--shadow); 
+    text-align:center; 
+  }
 
   .logo { font-size:28px; font-weight:700; margin-bottom:8px; display:block; }
   .tagline { font-size:14px; color: var(--muted); margin-bottom:24px; }
 
-  .oauth-btn { 
-    display:flex; 
-    align-items:center; 
-    justify-content:center; 
-    gap:8px; 
-    padding:12px; 
-    margin:12px 0; 
-    border-radius: var(--radius); 
-    cursor:pointer; 
-    border:1px solid #d1d5db; 
-    transition: all 0.2s ease; 
-    font-weight:600; 
-  }
+  .oauth-btn { display:flex; align-items:center; justify-content:center; gap:8px; padding:16px; margin:12px 0; border-radius: var(--radius); cursor:pointer; border:1px solid #d1d5db; transition: all 0.2s ease; font-weight:600; font-size:14px; }
   .oauth-btn img { width:20px; height:20px; }
-
   .oauth-btn.google { background:#fff; color:#000; }
   .oauth-btn.google:hover { background:#f3f4f6; }
-
   .oauth-btn.apple { background:#000; color:#fff; }
   .oauth-btn.apple:hover { opacity:0.85; }
-
   .oauth-btn.demo { background:#10b981; color:#fff; }
   .oauth-btn.demo:hover { opacity:0.85; }
+
+  .signup-link { margin-top:16px; font-size:13px; color: var(--muted); }
+  .signup-link a { color: var(--accent); text-decoration:none; font-weight:600; }
 </style>
 </head>
 
 <body>
 <div class="container">
   <span class="logo">📚 eLibrary AI</span>
-  <p class="tagline">Login to access your library dashboard</p>
+  <p class="tagline">Login using Google, Apple, or Demo account</p>
 
-  <!-- ONLY OAUTH (no email/password) -->
+  <!-- OAuth Login -->
   <div class="oauth-btn google" id="googleLogin">
-    <img src="https://img.icons8.com/color/48/000000/google-logo.png" />
-    Continue with Google
+    <img src="https://img.icons8.com/color/48/000000/google-logo.png" /> Continue with Google
   </div>
-
   <div class="oauth-btn apple" id="appleLogin">
-    <img src="https://img.icons8.com/ios-filled/50/ffffff/mac-os.png" />
-    Continue with Apple
+    <img src="https://img.icons8.com/ios-filled/50/ffffff/mac-os.png" /> Continue with Apple
   </div>
-
   <div class="oauth-btn demo" id="demoLogin">
     🧪 Try Demo Account
   </div>
+
+  <p class="signup-link">Don't have an account? <a href="register.html">Sign up</a></p>
 </div>
 
 <script>
-  const googleBtn = document.getElementById('googleLogin');
-  const appleBtn = document.getElementById('appleLogin');
-  const demoBtn = document.getElementById('demoLogin');
+const API_BASE = "https://e-library-18tg.onrender.com";
 
-  // **FULL BACKEND URL**
-  const BACKEND = "https://e-library-18tg.onrender.com";
+// OAuth buttons
+document.getElementById('googleLogin').onclick = () => { 
+  window.location.href = `${API_BASE}/auths/google`; 
+};
+document.getElementById('appleLogin').onclick = () => { 
+  window.location.href = `${API_BASE}/auths/apple`; 
+};
 
-  googleBtn.onclick = () => {
-    window.location.href = `${BACKEND}/auths/google`;
-  };
-
-  appleBtn.onclick = () => {
-    window.location.href = `${BACKEND}/auths/apple`;
-  };
-
-  demoBtn.onclick = async () => {
-    try {
-      const res = await fetch(`${BACKEND}/auths/demo`, { method:'POST' });
-      const data = await res.json();
-
-      if (data.status === 'success') {
-        localStorage.setItem('elib_user', JSON.stringify(data.user));
-        window.location.href = "/index.html";
-      } else {
-        alert(data.message || "Demo login failed");
-      }
-    } catch(err){
-      alert("Demo login failed — network/server error");
+// Demo login
+document.getElementById('demoLogin').onclick = async () => {
+  try {
+    const res = await fetch(`${API_BASE}/auths/demo`, { method:'POST' });
+    const data = await res.json();
+    if(data.status === 'success'){
+      localStorage.setItem('elib_user', JSON.stringify(data.user));
+      window.location.href = "https://e-library-two-tau.vercel.app/index.html";
+    } else {
+      alert(data.message || "Demo login failed");
     }
-  };
+  } catch(err){
+    alert("Demo login failed — network/server error");
+  }
+};
 </script>
-
 </body>
 </html>
