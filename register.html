@@ -18,7 +18,16 @@
 
   * { box-sizing: border-box; }
   body, html { margin:0; padding:0; font-family: Inter, sans-serif; background: var(--bg); display:flex; justify-content:center; align-items:center; height:100vh; }
-  .container { background: var(--card); width:100%; max-width: var(--container-width); padding:32px; border-radius:var(--radius); box-shadow:0 12px 32px var(--shadow); text-align:center; }
+  
+  .container { 
+    background: var(--card); 
+    width:100%; 
+    max-width: var(--container-width); 
+    padding:32px; 
+    border-radius:var(--radius); 
+    box-shadow:0 12px 32px var(--shadow); 
+    text-align:center; 
+  }
 
   .logo { font-size:28px; font-weight:700; margin-bottom:8px; display:block; }
   .tagline { font-size:14px; color: var(--muted); margin-bottom:24px; }
@@ -34,13 +43,14 @@
 
   .login-link { margin-top:16px; font-size:13px; color: var(--muted); }
   .login-link a { color: var(--accent); text-decoration:none; font-weight:600; }
+
 </style>
 </head>
 
 <body>
 <div class="container">
   <span class="logo">📚 eLibrary AI</span>
-  <p class="tagline">Sign up quickly using Google or Apple</p>
+  <p class="tagline">Sign up quickly using Google, Apple, or Demo account</p>
 
   <!-- OAuth Signup -->
   <div class="oauth-btn google" id="googleSignup">
@@ -59,31 +69,44 @@
 </div>
 
 <script>
-  const API_BASE = "https://e-library-18tg.onrender.com"; // Render backend URL
+const API_BASE = "https://e-library-18tg.onrender.com"; // backend URL
 
-  // OAuth buttons
-  document.getElementById('googleSignup').onclick = () => { 
-    window.location.href = `${API_BASE}/auths/google`; 
-  };
-  document.getElementById('appleSignup').onclick = () => { 
-    window.location.href = `${API_BASE}/auths/apple`; 
-  };
+// OAuth buttons
+document.getElementById('googleSignup').onclick = () => { 
+  window.location.href = `${API_BASE}/auths/google`; 
+};
 
-  // Demo account
-  document.getElementById('demoSignup').onclick = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/auths/demo`, { method:'POST' });
-      const data = await res.json();
-      if(data.status === 'success'){
-        localStorage.setItem('elib_user', JSON.stringify(data.user));
-        window.location.href = "https://e-library-two-tau.vercel.app/index.html";
-      } else {
-        alert(data.message || "Demo account creation failed");
-      }
-    } catch(err){
-      alert("Demo account creation failed — network/server error");
+document.getElementById('appleSignup').onclick = () => { 
+  window.location.href = `${API_BASE}/auths/apple`; 
+};
+
+// Demo account signup
+document.getElementById('demoSignup').onclick = async () => {
+  try {
+    const res = await fetch(`${API_BASE}/auths/demo`, { method:'POST' });
+    const data = await res.json();
+
+    if(data.status === 'success'){
+      // Save user info to localStorage
+      localStorage.setItem('elib_user', JSON.stringify(data.user));
+
+      // Redirect to index page
+      window.location.href = "https://e-library-two-tau.vercel.app/index.html";
+    } else {
+      alert(data.message || "Demo account creation failed");
     }
-  };
+  } catch(err){
+    alert("Demo account creation failed — network/server error");
+  }
+};
+
+// Optional: Check if user already logged in
+window.onload = () => {
+  const existingUser = localStorage.getItem('elib_user');
+  if(existingUser){
+    window.location.href = "https://e-library-two-tau.vercel.app/index.html";
+  }
+};
 </script>
 </body>
 </html>
