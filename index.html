@@ -4,6 +4,7 @@
 <meta charset="utf-8" />  
 <meta name="viewport" content="width=device-width,initial-scale=1" />  
 <title>E-Library — AI Search</title>  
+
 <style>  
   :root {  
     --bg: #f4f6fa;  
@@ -18,6 +19,71 @@
   * { box-sizing: border-box; }  
   body, html { margin:0; padding:0; font-family: Inter, sans-serif; background: var(--bg); }  
   .container { max-width: var(--container-width); margin: 0 auto; padding: 24px; }  
+
+  /* ---------------- GOOGLE-STYLE ACCOUNT HEADER ---------------- */
+  .topbar {
+    width: 100%;
+    padding: 14px 24px;
+    background: #fff;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+  .user-area {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    position: relative;
+  }
+  .user-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: #374151;
+  }
+  .user-photo {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #e5e7eb;
+  }
+
+  .dropdown {
+    position: absolute;
+    top: 55px;
+    right: 0;
+    width: 180px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .dropdown.open {
+    display: flex;
+  }
+  .dropdown a {
+    padding: 12px 16px;
+    text-decoration: none;
+    font-size: 14px;
+    color: #374151;
+    border-bottom: 1px solid #f3f4f6;
+    transition: background 0.2s;
+  }
+  .dropdown a:hover {
+    background: #f3f4f6;
+  }
+  .dropdown a:last-child {
+    border-bottom: none;
+  }
+
+  /* ---------------- EXISTING DESIGN BELOW ---------------- */
   .site-header { text-align:center; padding:60px 0 40px 0; }  
   .logo { font-size: 32px; font-weight:700; display:block; }  
   .tagline { color: var(--muted); font-size:16px; margin-top:6px; }  
@@ -54,7 +120,22 @@
   footer { text-align:center; margin:40px 0 20px 0; font-size:13px; color: var(--muted); }  
 </style>  
 </head>  
-<body>  
+
+<body>
+
+<!-- GOOGLE STYLE TOPBAR -->
+<div class="topbar">
+  <div id="userArea" class="user-area" style="display:none;">
+    <span id="displayName" class="user-name"></span>
+    <img id="displayPhoto" class="user-photo" />
+    <div id="dropdownMenu" class="dropdown">
+      <a href="index.html">🏠 Home</a>
+      <a id="logoutBtn" href="#">🚪 Logout</a>
+      <a href="#">⚙ Manage Account</a>
+    </div>
+  </div>
+</div>
+
 <header class="site-header">  
   <div class="container">  
     <span class="logo">📚 eLibrary AI</span>  
@@ -87,7 +168,38 @@
 </footer>
 
 <script>
-const API_BASE = "https://e-library-18tg.onrender.com"; // Always point to Render backend
+/* ------------------ USER HEADER LOGIC ------------------- */
+const userArea = document.getElementById("userArea");
+const displayName = document.getElementById("displayName");
+const displayPhoto = document.getElementById("displayPhoto");
+const dropdown = document.getElementById("dropdownMenu");
+const logoutBtn = document.getElementById("logoutBtn");
+
+function loadUser() {
+  const name = localStorage.getItem("elib_user_name");
+  const photo = localStorage.getItem("elib_user_photo");
+
+  if (name) {
+    displayName.textContent = name;
+    displayPhoto.src = photo || "https://www.gstatic.com/images/branding/product/1x/avatar_circle_blue_512dp.png";
+    userArea.style.display = "flex";
+  }
+}
+
+// toggle dropdown
+userArea.onclick = () => dropdown.classList.toggle("open");
+
+// logout
+logoutBtn.onclick = () => {
+  localStorage.removeItem("elib_user_name");
+  localStorage.removeItem("elib_user_photo");
+  window.location.href = "login.html";
+};
+
+loadUser();
+
+/* ------------------ YOUR ORIGINAL SEARCH ENGINE JS BELOW ------------------ */
+const API_BASE = "https://e-library-18tg.onrender.com";
 const searchInput = document.getElementById('searchInput');
 const searchBtn = document.getElementById('searchBtn');
 const pdfOnly = document.getElementById('pdfOnly');
@@ -291,7 +403,7 @@ window.onload = () => {
   breadcrumbs.classList.add("hidden");
   aiSummary.classList.add("hidden");
   pagination.classList.add("hidden");
-  loadLastState(); // only loads from localStorage, never calls relative /api
+  loadLastState();
 };
 </script>
 
