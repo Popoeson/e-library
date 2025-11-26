@@ -27,11 +27,7 @@ passport.use(
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       callbackURL: "https://e-library-18tg.onrender.com/auths/google/callback",
-
-      // 🔥 FORCE GOOGLE TO ASK AGAIN EVERY TIME
       prompt: "select_account",
-
-      // recommended scopes
       scope: ["profile", "email"]
     },
     async (accessToken, refreshToken, profile, done) => {
@@ -44,10 +40,19 @@ passport.use(
         if (!user) {
           user = await User.create({
             name: profile.displayName,
-            email: profile.emails?.[0]?.value || `noemail-${profile.id}@gmail.com`,
+            email:
+              profile.emails?.[0]?.value ||
+              `noemail-${profile.id}@gmail.com`,
             oauthProvider: "google",
-            oauthId: profile.id
+            oauthId: profile.id,
+            photo: profile.photos?.[0]?.value || null
           });
+        } else {
+          // Update photo if not saved previously
+          if (!user.photo && profile.photos?.[0]?.value) {
+            user.photo = profile.photos[0].value;
+            await user.save();
+          }
         }
 
         done(null, user);
