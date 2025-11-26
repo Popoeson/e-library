@@ -17,7 +17,13 @@
   }
 
   * { box-sizing: border-box; }
-  body, html { margin:0; padding:0; font-family: Inter, sans-serif; background: var(--bg); display:flex; justify-content:center; align-items:center; height:100vh; }
+  body, html { 
+    margin:0; padding:0; 
+    font-family: Inter, sans-serif; 
+    background: var(--bg); 
+    display:flex; justify-content:center; align-items:center; 
+    height:100vh; 
+  }
 
   .container { 
     background: var(--card); 
@@ -29,15 +35,24 @@
     text-align:center; 
   }
 
-  .logo { font-size:28px; font-weight:700; margin-bottom:8px; display:block; }
+  .logo { font-size:28px; font-weight:700; margin-bottom:8px; }
   .tagline { font-size:14px; color: var(--muted); margin-bottom:24px; }
 
-  .oauth-btn { display:flex; align-items:center; justify-content:center; gap:8px; padding:16px; margin:12px 0; border-radius: var(--radius); cursor:pointer; border:1px solid #d1d5db; transition: all 0.2s ease; font-weight:600; font-size:14px; }
+  .oauth-btn { 
+    display:flex; align-items:center; justify-content:center; 
+    gap:8px; padding:16px; margin:12px 0; 
+    border-radius: var(--radius); cursor:pointer; 
+    border:1px solid #d1d5db; transition:0.2s ease; 
+    font-weight:600; font-size:14px;
+  }
   .oauth-btn img { width:20px; height:20px; }
+
   .oauth-btn.google { background:#fff; color:#000; }
   .oauth-btn.google:hover { background:#f3f4f6; }
+
   .oauth-btn.apple { background:#000; color:#fff; }
   .oauth-btn.apple:hover { opacity:0.85; }
+
   .oauth-btn.demo { background:#10b981; color:#fff; }
   .oauth-btn.demo:hover { opacity:0.85; }
 
@@ -51,13 +66,17 @@
   <span class="logo">📚 eLibrary AI</span>
   <p class="tagline">Login using Google, Apple, or Demo account</p>
 
-  <!-- OAuth Login -->
+  <!-- OAuth Login Buttons -->
   <div class="oauth-btn google" id="googleLogin">
-    <img src="https://img.icons8.com/color/48/000000/google-logo.png" /> Continue with Google
+    <img src="https://img.icons8.com/color/48/000000/google-logo.png" />
+    Continue with Google
   </div>
+
   <div class="oauth-btn apple" id="appleLogin">
-    <img src="https://img.icons8.com/ios-filled/50/ffffff/mac-os.png" /> Continue with Apple
+    <img src="https://img.icons8.com/ios-filled/50/ffffff/mac-os.png" />
+    Continue with Apple
   </div>
+
   <div class="oauth-btn demo" id="demoLogin">
     🧪 Try Demo Account
   </div>
@@ -69,48 +88,58 @@
 const API_BASE = "https://e-library-18tg.onrender.com";
 
 /* ----------------------------------------------------
+   FORCE LOGOUT (clear previous sessions)
+------------------------------------------------------ */
+localStorage.removeItem("elib_user");
+localStorage.removeItem("elib_demo_account");
+localStorage.removeItem("elib_user_name");
+localStorage.removeItem("elib_user_photo");
+
+/* ----------------------------------------------------
    GOOGLE LOGIN
 ------------------------------------------------------ */
-document.getElementById('googleLogin').onclick = () => { 
-  // Clear previous sessions
-  localStorage.clear();
+document.getElementById("googleLogin").onclick = () => {
   window.location.href = `${API_BASE}/auths/google?prompt=select_account`;
 };
 
 /* ----------------------------------------------------
    APPLE LOGIN
 ------------------------------------------------------ */
-document.getElementById('appleLogin').onclick = () => { 
-  localStorage.clear();
+document.getElementById("appleLogin").onclick = () => {
   window.location.href = `${API_BASE}/auths/apple`;
 };
 
 /* ----------------------------------------------------
-   DEMO LOGIN (Anonymous – NOT saved to DB)
+   DEMO LOGIN (anonymous guest)
 ------------------------------------------------------ */
-document.getElementById('demoLogin').onclick = async () => {
+document.getElementById("demoLogin").onclick = async () => {
   try {
-    const res = await fetch(`${API_BASE}/auths/demo`, { method:'POST' });
+    const res = await fetch(`${API_BASE}/auths/demo`, { method: "POST" });
     const data = await res.json();
 
-    if(data.status === 'success'){
+    if (data.status === "success") {
 
-      // Required by index.html
+      const userData = {
+        name: data.user.name || "Demo User",
+        email: null,
+        oauthId: null,
+        provider: "demo",
+        photo: data.user.photo || ""
+      };
+
+      // SAVE SESSION
       localStorage.setItem("elib_demo_account", "true");
-      localStorage.setItem("elib_user_name", data.user.name || "Demo User");
-      localStorage.setItem("elib_user_photo", data.user.photo || "");
-
-      // Important (index.html checks this)
-      localStorage.setItem("elib_user", JSON.stringify(data.user));
+      localStorage.setItem("elib_user", JSON.stringify(userData));
+      localStorage.setItem("elib_user_name", userData.name);
+      localStorage.setItem("elib_user_photo", userData.photo);
 
       window.location.href = "index.html";
-    } 
-    else {
+    } else {
       alert(data.message || "Demo login failed");
     }
 
-  } catch(err){
-    alert("Demo login failed — network/server error");
+  } catch (error) {
+    alert("Demo login failed — server error");
   }
 };
 </script>
