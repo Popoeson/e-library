@@ -68,26 +68,40 @@
 <script>
 const API_BASE = "https://e-library-18tg.onrender.com";
 
-// OAuth buttons
+/* ----------------------------------------------------
+   GOOGLE LOGIN
+------------------------------------------------------ */
 document.getElementById('googleLogin').onclick = () => { 
-  window.location.href = `${API_BASE}/auths/google?prompt=select_account`; 
+  // Clear previous sessions
+  localStorage.clear();
+  window.location.href = `${API_BASE}/auths/google?prompt=select_account`;
 };
 
+/* ----------------------------------------------------
+   APPLE LOGIN
+------------------------------------------------------ */
 document.getElementById('appleLogin').onclick = () => { 
+  localStorage.clear();
   window.location.href = `${API_BASE}/auths/apple`;
 };
 
-// Demo login
+/* ----------------------------------------------------
+   DEMO LOGIN (Anonymous – NOT saved to DB)
+------------------------------------------------------ */
 document.getElementById('demoLogin').onclick = async () => {
   try {
     const res = await fetch(`${API_BASE}/auths/demo`, { method:'POST' });
     const data = await res.json();
 
     if(data.status === 'success'){
-      // save properly
-      localStorage.setItem("elib_user", JSON.stringify(data.user));
-      localStorage.setItem("elib_user_name", data.user.name || "");
+
+      // Required by index.html
+      localStorage.setItem("elib_demo_account", "true");
+      localStorage.setItem("elib_user_name", data.user.name || "Demo User");
       localStorage.setItem("elib_user_photo", data.user.photo || "");
+
+      // Important (index.html checks this)
+      localStorage.setItem("elib_user", JSON.stringify(data.user));
 
       window.location.href = "index.html";
     } 
