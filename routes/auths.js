@@ -24,18 +24,22 @@ router.post("/demo", async (req, res) => {
 });
 
 // -----------------------------
-// 2. Google OAuth
+// 2. Google OAuth (updated)
 // -----------------------------
 router.get(
   "/google",
-  passport.authenticate("google", { scope: ["profile", "email"] })
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+    prompt: "select_account",   // 🔥 FORCE CHOOSE ACCOUNT EVERY TIME
+  })
 );
 
 router.get(
   "/google/callback",
-  passport.authenticate("google", { failureRedirect: `${FRONTEND_URL}/login.html` }),
+  passport.authenticate("google", {
+    failureRedirect: `${FRONTEND_URL}/login.html`,
+  }),
   (req, res) => {
-    // After successful login, redirect to frontend
     res.redirect(FRONTEND_URL);
   }
 );
@@ -47,7 +51,9 @@ router.get("/apple", passport.authenticate("apple"));
 
 router.post(
   "/apple/callback",
-  passport.authenticate("apple", { failureRedirect: `${FRONTEND_URL}/login.html` }),
+  passport.authenticate("apple", {
+    failureRedirect: `${FRONTEND_URL}/login.html`,
+  }),
   (req, res) => {
     res.redirect(FRONTEND_URL);
   }
