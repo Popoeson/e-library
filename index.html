@@ -163,9 +163,7 @@
 
 <script>
 
-/* ------------------------------------------------------
-   FORCE LOGIN: Google OR Apple OR Demo
------------------------------------------------------- */
+/* ===== FORCE LOGIN ===== */
 (function enforceLogin() {
   const g = localStorage.getItem("elib_user_google");
   const a = localStorage.getItem("elib_user_apple");
@@ -176,7 +174,7 @@
   }
 })();
 
-/* ------------------ USER HEADER LOGIC ------------------- */
+/* ===== LOAD USER ===== */
 const userArea = document.getElementById("userArea");
 const displayName = document.getElementById("displayName");
 const displayPhoto = document.getElementById("displayPhoto");
@@ -187,6 +185,7 @@ function loadUser() {
   let name =
     localStorage.getItem("elib_user_name") ||
     localStorage.getItem("elib_demo_name");
+
   let photo =
     localStorage.getItem("elib_user_photo") ||
     "https://www.gstatic.com/images/branding/product/1x/avatar_circle_blue_512dp.png";
@@ -213,8 +212,9 @@ logoutBtn.onclick = () => {
 
 loadUser();
 
-/* ------------------ SEARCH SYSTEM JS (unchanged) ------------------ */
-
+/* ----------------------------------------------------------------
+   SEARCH LOGIC
+---------------------------------------------------------------- */
 const API_BASE = "https://e-library-18tg.onrender.com";
 const searchInput = document.getElementById('searchInput');
 const searchBtn = document.getElementById('searchBtn');
@@ -252,7 +252,7 @@ function cleanHTML(str) {
 
 function showSkeleton() {
   resultsGrid.innerHTML = "";
-  for (let i=0;i<6;i++){
+  for (let i = 0; i < 6; i++) {
     const block = document.createElement("div");
     block.className = "skeleton skeleton-card";
     resultsGrid.appendChild(block);
@@ -279,16 +279,21 @@ function loadLastState() {
 }
 
 function renderBreadcrumbs(items) {
-  const categories = [...new Set(items.map(it => SOURCE_CATEGORIES[it.source?.toLowerCase()] || "Other"))];
-  breadcrumbs.innerHTML = "";
+  const categories = [...new Set(items.map(it =>
+    SOURCE_CATEGORIES[it.source?.toLowerCase()] || "Other"
+  ))];
 
+  breadcrumbs.innerHTML = "";
   categories.forEach(cat => {
     const btn = document.createElement("button");
     btn.textContent = cat;
     btn.className = cat === activeSource ? "active" : "";
     btn.onclick = () => {
       activeSource = (cat === activeSource) ? null : cat;
-      renderResults({ originalQuery: searchInput.value, summary: aiSummary.textContent });
+      renderResults({
+        originalQuery: searchInput.value,
+        summary: aiSummary.textContent
+      });
     };
     breadcrumbs.appendChild(btn);
   });
@@ -298,12 +303,17 @@ function renderBreadcrumbs(items) {
 
 function renderResults(data) {
   let items = CURRENT_RESULTS;
-  if (activeSource) items = items.filter(it => (SOURCE_CATEGORIES[it.source?.toLowerCase()] || "Other") === activeSource);
+
+  if (activeSource) {
+    items = items.filter(it =>
+      (SOURCE_CATEGORIES[it.source?.toLowerCase()] || "Other") === activeSource
+    );
+  }
 
   const total = items.length;
-  const start = (PAGE-1)*PAGE_SIZE;
-  const end = start+PAGE_SIZE;
-  const pageItems = items.slice(start,end);
+  const start = (PAGE - 1) * PAGE_SIZE;
+  const end = start + PAGE_SIZE;
+  const pageItems = items.slice(start, end);
 
   resultsGrid.innerHTML = "";
   resultsInfo.textContent = `Showing ${items.length} results for "${data.originalQuery}"`;
@@ -318,110 +328,74 @@ function renderResults(data) {
   };
 
   if (pageItems.length === 0) {
-    resultsGrid.innerHTML = '<p style="grid-column:1/-1;padding:18px;color:#6b7280">No results found.</p>';
-    pagination.classList.add("hidden");
-    breadcrumbs.classList.add("hidden");
+    resultsGrid.innerHTML = "<p>No results found.</p>";
     return;
   }
 
-  renderBreadcrumbs(items);
+  pageItems.forEach(item => {
+    const div = document.createElement("div");
+    div.className = "card";
 
-  pageItems.forEach(it=>{
-    const card = document.createElement("div");
-    card.className = "card";
+    let pdf = item.url?.toLowerCase().includes(".pdf");
 
-    if (it.link && it.link.toLowerCase().endsWith(".pdf")) {
-      const badge = document.createElement("div");
-      badge.className = "pdf-badge";
-      badge.textContent = "PDF";
-      card.appendChild(badge);
-    }
+    div.innerHTML = `
+      ${pdf ? `<span class="pdf-badge">PDF</span>` : ""}
+      <h3>${cleanHTML(item.title || "Untitled")}</h3>
+      <p>${cleanHTML(item.snippet || item.description || "No description available")}</p>
+      <div class="meta">
+        <span>${SOURCE_CATEGORIES[item.source?.toLowerCase()] || "Other"}</span>
+        <a class="link-btn" href="${item.url}" target="_blank">Open</a>
+      </div>
+    `;
 
-    const title = document.createElement("h3");
-    title.textContent = it.title || it.link || "Untitled";
-    card.appendChild(title);
-
-    const snippet = document.createElement("p");
-    snippet.textContent = cleanHTML(it.snippet);
-    card.appendChild(snippet);
-
-    const meta = document.createElement("div");
-    meta.className = "meta";
-
-    const source = document.createElement("div");
-    const hostname = it.link ? new URL(it.link).hostname : "";
-    source.textContent = SOURCE_CATEGORIES[it.source?.toLowerCase()] || it.source || hostname || "Unknown";
-    meta.appendChild(source);
-
-    const actions = document.createElement("div");
-    const a = document.createElement("a");
-    a.href = it.link || "#";
-    a.target = "_blank";
-    a.className = "link-btn";
-    a.textContent = it.link ? "Open" : "No link";
-    actions.appendChild(a);
-
-    meta.appendChild(actions);
-    card.appendChild(meta);
-    resultsGrid.appendChild(card);
+    resultsGrid.appendChild(div);
   });
 
   pagination.classList.remove("hidden");
-  prevBtn.disabled = PAGE===1;
-  nextBtn.disabled = end>=total;
+
+  prevBtn.disabled = PAGE === 1;
+  nextBtn.disabled = end >= total;
+
+  prevBtn.onclick = () => {
+    PAGE--;
+    renderResults({ originalQuery: data.originalQuery, summary: data.summary });
+  };
+
+  nextBtn.onclick = () => {
+    PAGE++;
+    renderResults({ originalQuery: data.originalQuery, summary: data.summary });
+  };
+
+  renderBreadcrumbs(CURRENT_RESULTS);
 }
 
-async function doSearch() {
-  const q = searchInput.value.trim();
-  if (!q) { alert("Please type a search term"); return; }
+/* ------- SEARCH BUTTON EVENT ------- */
+searchBtn.onclick = async () => {
+  const query = searchInput.value.trim();
+  if (!query) return;
 
   showSkeleton();
-  aiSummary.classList.add("hidden");
-  resultsInfo.classList.add("hidden");
-  pagination.classList.add("hidden");
-  breadcrumbs.classList.add("hidden");
 
   try {
-    const resp = await fetch(`${API_BASE}/api/search`, {
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body:JSON.stringify({ query:q, limit:20, preferPdf: pdfOnly.checked })
-    });
-
-    if (!resp.ok) throw new Error("Search failed");
-    const data = await resp.json();
+    const res = await fetch(`${API_BASE}/api/search?q=${encodeURIComponent(query)}&pdfOnly=${pdfOnly.checked}`);
+    const data = await res.json();
 
     CURRENT_RESULTS = data.results || [];
     PAGE = 1;
-    activeSource = null;
 
-    saveState(q, data);
-    renderResults(data);
+    saveState(query, data);
+
+    renderResults({ originalQuery: query, summary: data.summary });
+
+  } catch (err) {
+    console.error(err);
+    resultsGrid.innerHTML = "<p>Error loading results.</p>";
   }
-  catch(err){
-    resultsGrid.innerHTML = '<p style="grid-column:1/-1;padding:18px;color:#ff4d4f">Search failed — network/server error</p>';
-  }
-}
-
-prevBtn.onclick = () => { PAGE--; renderResults({ originalQuery: searchInput.value, summary: aiSummary.textContent }); };
-nextBtn.onclick = () => { PAGE++; renderResults({ originalQuery: searchInput.value, summary: aiSummary.textContent }); };
-
-searchBtn.onclick = doSearch;
-searchInput.addEventListener("keydown", e => { if(e.key==="Enter") doSearch(); });
-
-// Load last state safely on page load
-window.onload = () => {
-  CURRENT_RESULTS = [];
-  PAGE = 1;
-  activeSource = null;
-  resultsGrid.innerHTML = "";
-  resultsInfo.classList.add("hidden");
-  breadcrumbs.classList.add("hidden");
-  aiSummary.classList.add("hidden");
-  pagination.classList.add("hidden");
-  loadLastState();
 };
 
+window.onload = loadLastState;
+
 </script>
+
 </body>
 </html>
