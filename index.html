@@ -313,29 +313,33 @@ function renderResults(data) {
   }
 
   pageItems.forEach(item => {
-  const div = document.createElement("div");
-  div.className = "card";
-  const pdf = item.url?.toLowerCase().includes(".pdf");
-  const rawUrl = item.url || "#";
-  const linkUrl = rawUrl.startsWith("http://") || rawUrl.startsWith("https://") ? rawUrl : "https://" + rawUrl;
+const div = document.createElement("div");
+div.className = "card";
+const pdf = item.url?.toLowerCase().includes(".pdf");
 
-  div.innerHTML = `
-    ${pdf ? `<span class="pdf-badge">PDF</span>` : ""}
-    <h3>${cleanHTML(item.title || "Untitled")}</h3>
-    <p>${cleanHTML(item.snippet || item.description || "No description available")}</p>
-    <div class="meta">
-      <span>${SOURCE_CATEGORIES[item.source?.toLowerCase()] || "Other"}</span>
-      <a class="link-btn" href="${linkUrl}" target="_blank" rel="noopener noreferrer">Open</a>
-    </div>
-  `;
+// Validate and fix URL
+let linkUrl = "#";
+try {
+if (item.url) {
+const urlObj = new URL(item.url.startsWith("http") ? item.url : "https://" + item.url);
+linkUrl = urlObj.href;
+}
+} catch (err) {
+linkUrl = "#";
+}
 
-  // ensure link works even if parent div intercepts click
-  const link = div.querySelector("a");
-  link.addEventListener("click", e => {
-    e.stopPropagation(); // stop any parent click
-  });
+div.innerHTML = "${pdf ?"<span class="pdf-badge">PDF</span>": ""} <h3>${cleanHTML(item.title || "Untitled")}</h3> <p>${cleanHTML(item.snippet || item.description || "No description available")}</p> <div class="meta"> <span>${SOURCE_CATEGORIES[item.source?.toLowerCase()] || "Other"}</span> <a class="link-btn" href="#">Open</a> </div>";
 
-  resultsGrid.appendChild(div);
+const link = div.querySelector("a");
+link.addEventListener("click", e => {
+e.preventDefault();
+e.stopPropagation();
+if (linkUrl !== "#") {
+window.open(linkUrl, "_blank", "noopener,noreferrer");
+}
+});
+
+resultsGrid.appendChild(div);
 });
 
   pagination.classList.remove("hidden");
