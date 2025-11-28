@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Loading...</title>
+<title>Signing you in...</title>
 </head>
 
 <body style="font-family:Arial; padding:40px; text-align:center;">
@@ -11,25 +11,63 @@
 <script>
 const API_BASE = "https://e-library-18tg.onrender.com";
 
-// Wait for OAuth to complete then fetch user info
-fetch(`${API_BASE}/auths/me`, { credentials: "include" })
-  .then(res => res.json())
-  .then(user => {
-    if (!user || !user.email) {
-      window.location.href = "login.html";
+function getQueryParams() {
+  const params = {};
+  location.search.substring(1).split("&").forEach(pair => {
+    const [key, value] = pair.split("=");
+    if (key) params[key] = decodeURIComponent(value || "");
+  });
+  return params;
+}
+
+async function init() {
+  try {
+    // First try to fetch session user
+    const resp = await fetch(`${API_BASE}/auths/api/me`, { credentials: "include" });
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data && data.user) {
+        const user = data.user;
+        // Store in localStorage based on provider
+        if (user.provider === "google") {
+          localStorage.setItem("elib_user_google", "true");
+        } else if (user.provider === "apple") {
+          localStorage.setItem("elib_user_apple", "true");
+        }
+
+        localStorage.setItem("elib_user_name", user.name);
+        localStorage.setItem("elib_user_photo", user.photo || "");
+
+        window.location.href = "index.html";
+        return;
+      }
+    }
+
+    // If session fetch fails, fallback to query params (Google/Apple redirect)
+    const params = getQueryParams();
+    if (params.name) {
+      if (params.provider === "google") {
+        localStorage.setItem("elib_user_google", "true");
+      } else if (params.provider === "apple") {
+        localStorage.setItem("elib_user_apple", "true");
+      }
+
+      localStorage.setItem("elib_user_name", params.name);
+      localStorage.setItem("elib_user_photo", params.photo || "");
+
+      window.location.href = "index.html";
       return;
     }
 
-    localStorage.setItem("elib_user", JSON.stringify({
-      name: user.name,
-      email: user.email,
-      provider: user.oauthProvider,
-      photo: user.photo || ""
-    }));
+    // Otherwise redirect to login
+    window.location.href = "login.html";
+  } catch (err) {
+    console.error(err);
+    window.location.href = "login.html";
+  }
+}
 
-    window.location.href = "index.html";
-  })
-  .catch(() => window.location.href = "login.html");
+init();
 </script>
 </body>
 </html>
