@@ -153,7 +153,7 @@
 </footer>
 
 
-<script>
+ <script>
 const API_BASE = "https://e-library-18tg.onrender.com";
 
 // ===== LOAD USER =====
@@ -220,7 +220,7 @@ const SOURCE_CATEGORIES = {
   unknown: "Other"
 };
 
-// Utility to clean HTML
+// Clean HTML from user-provided data
 function cleanHTML(str) {
   const tmp = document.createElement("div");
   tmp.innerHTML = str || "";
@@ -257,84 +257,102 @@ function loadLastState() {
   renderResults({ originalQuery: q, summary: data.summary || "" });
 }
 
-// Safely get external URL
+// Safely normalize external URLs
 function getSafeUrl(url) {
-if (!url) return "#"; // fallback
-try {
-// Add protocol if missing
-if (!url.startsWith("http://") && !url.startsWith("https://")) {
-url = "https://" + url.replace(/^///, "");
+  if (!url) return "#";
+  try {
+    const fullUrl = url.startsWith("http://") || url.startsWith("https://") ? url : "https://" + url;
+    return new URL(fullUrl).href;
+  } catch {
+    return "#";
+  }
 }
-const u = new URL(url);
-return u.href;
-} catch (err) {
-console.warn("Invalid URL:", url);
-return "#";
-}
+
+// Breadcrumb rendering
+function renderBreadcrumbs(items) {
+  const categories = [...new Set(items.map(it =>
+    SOURCE_CATEGORIES[it.source?.toLowerCase()] || "Other"
+  ))];
+
+  breadcrumbs.innerHTML = "";
+  categories.forEach(cat => {
+    const btn = document.createElement("button");
+    btn.textContent = cat;
+    btn.className = cat === activeSource ? "active" : "";
+    btn.onclick = () => {
+      activeSource = (cat === activeSource) ? null : cat;
+      renderResults({
+        originalQuery: searchInput.value,
+        summary: aiSummary.textContent
+      });
+    };
+    breadcrumbs.appendChild(btn);
+  });
+
+  breadcrumbs.classList.remove("hidden");
 }
 
 // MAIN: render search results
 function renderResults(data) {
-let items = CURRENT_RESULTS;
+  let items = CURRENT_RESULTS;
 
-if (activeSource) {
-items = items.filter(it =>
-(SOURCE_CATEGORIES[it.source?.toLowerCase()] || "Other") === activeSource
-);
-}
+  if (activeSource) {
+    items = items.filter(it =>
+      (SOURCE_CATEGORIES[it.source?.toLowerCase()] || "Other") === activeSource
+    );
+  }
 
-const total = items.length;
-const start = (PAGE - 1) * PAGE_SIZE;
-const end = start + PAGE_SIZE;
-const pageItems = items.slice(start, end);
+  const total = items.length;
+  const start = (PAGE - 1) * PAGE_SIZE;
+  const end = start + PAGE_SIZE;
+  const pageItems = items.slice(start, end);
 
-resultsGrid.innerHTML = "";
-resultsInfo.textContent = "Showing ${items.length} results for "${data.originalQuery}"";
-resultsInfo.classList.remove("hidden");
+  resultsGrid.innerHTML = "";
+  resultsInfo.textContent = `Showing ${items.length} results for "${data.originalQuery}"`;
+  resultsInfo.classList.remove("hidden");
 
-aiSummary.textContent = data.summary ? cleanHTML(data.summary) : "No summary available.";
-aiSummary.classList.remove("hidden");
-aiSummary.classList.add("collapsed");
-aiSummary.onclick = () => {
-aiSummary.classList.toggle("collapsed");
-aiSummary.classList.toggle("expanded");
-};
+  aiSummary.textContent = data.summary ? cleanHTML(data.summary) : "No summary available.";
+  aiSummary.classList.remove("hidden");
+  aiSummary.classList.add("collapsed");
+  aiSummary.onclick = () => {
+    aiSummary.classList.toggle("collapsed");
+    aiSummary.classList.toggle("expanded");
+  };
 
-if (pageItems.length === 0) {
-resultsGrid.innerHTML = "<p>No results found.</p>";
-return;
-}
+  if (pageItems.length === 0) {
+    resultsGrid.innerHTML = "<p>No results found.</p>";
+    return;
+  }
 
-pageItems.forEach(item => {
-const div = document.createElement("div");
-div.className = "card";
-const pdf = item.url?.toLowerCase().includes(".pdf");
+  pageItems.forEach(item => {
+    const div = document.createElement("div");
+    div.className = "card";
+    const pdf = item.url?.toLowerCase().includes(".pdf");
 
-const linkUrl = getSafeUrl(item.url); // Always returns a string now
+    const linkUrl = getSafeUrl(item.url);
 
-div.innerHTML = `
-  ${pdf ? `<span class="pdf-badge">PDF</span>` : ""}
-  <h3>${cleanHTML(item.title || "Untitled")}</h3>
-  <p>${cleanHTML(item.snippet || item.description || "No description available")}</p>
-  <div class="meta">
-    <span>${SOURCE_CATEGORIES[item.source?.toLowerCase()] || "Other"}</span>
-    <a class="link-btn" href="${linkUrl}" target="_blank" rel="noopener noreferrer">Open</a>
-  </div>
-`;
+    div.innerHTML = `
+      ${pdf ? `<span class="pdf-badge">PDF</span>` : ""}
+      <h3>${cleanHTML(item.title || "Untitled")}</h3>
+      <p>${cleanHTML(item.snippet || item.description || "No description available")}</p>
+      <div class="meta">
+        <span>${SOURCE_CATEGORIES[item.source?.toLowerCase()] || "Other"}</span>
+        <a class="link-btn" href="${linkUrl}" target="_blank" rel="noopener noreferrer">Open</a>
+      </div>
+    `;
 
-resultsGrid.appendChild(div);
+    resultsGrid.appendChild(div);
+  });
 
-});
+  // Pagination
+  pagination.classList.remove("hidden");
+  prevBtn.disabled = PAGE === 1;
+  nextBtn.disabled = end >= total;
 
-// Pagination
-pagination.classList.remove("hidden");
-prevBtn.disabled = PAGE === 1;
-nextBtn.disabled = end >= total;
+  prevBtn.onclick = () => { PAGE--; renderResults({ originalQuery: data.originalQuery, summary: data.summary }); };
+  nextBtn.onclick = () => { PAGE++; renderResults({ originalQuery: data.originalQuery, summary: data.summary }); };
 
-prevBtn.onclick = () => { PAGE--; renderResults({ originalQuery: data.originalQuery, summary: data.summary }); };
-nextBtn.onclick = () => { PAGE++; renderResults({ originalQuery: data.originalQuery, summary: data.summary }); };
-
-renderBreadcrumbs(CURRENT_RESULTS);
+  renderBreadcrumbs(CURRENT_RESULTS);
 }
 
 // SEARCH BUTTON EVENT
@@ -369,6 +387,5 @@ searchBtn.onclick = async () => {
 
 window.onload = loadLastState;
 </script>
-
 </body>
 </html>
