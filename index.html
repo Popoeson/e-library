@@ -139,16 +139,20 @@
       <button id="searchBtn" class="btn primary">Search</button>  
       <label><input id="pdfOnly" type="checkbox" checked /> PDF only</label>  
     </div>  
-  </section>     <section id="resultsInfo" class="results-info hidden"></section>  
+  </section>    
+ <section id="resultsInfo" class="results-info hidden"></section>  
   <section id="aiSummary" class="ai-summary collapsed hidden"></section>  
   <section id="breadcrumbs" class="breadcrumbs hidden"></section>  
   <section id="resultsGrid" class="results-grid"></section>    <div id="pagination" class="pagination hidden">  
     <button id="prevBtn">◀ Previous</button>  
     <button id="nextBtn">Next ▶</button>  
   </div>  
-</main>  <footer>  
+</main>  
+<footer>  
   Built with Brave Search • Serpstack • Demo  
-</footer><script>
+</footer>
+
+<script>
 const API_BASE = "https://e-library-18tg.onrender.com";
 
 // ===== LOAD USER =====
@@ -309,21 +313,30 @@ function renderResults(data) {
   }
 
   pageItems.forEach(item => {
-    const div = document.createElement("div");
-    div.className = "card";
-    const pdf = item.url?.toLowerCase().includes(".pdf");
-    const linkUrl = getSafeUrl(item.url);
-    div.innerHTML = `
-      ${pdf ? `<span class="pdf-badge">PDF</span>` : ""}
-      <h3>${cleanHTML(item.title || "Untitled")}</h3>
-      <p>${cleanHTML(item.snippet || item.description || "No description available")}</p>
-      <div class="meta">
-        <span>${SOURCE_CATEGORIES[item.source?.toLowerCase()] || "Other"}</span>
-        <a class="link-btn" href="${linkUrl}" target="_blank">Open</a>
-      </div>
-    `;
-    resultsGrid.appendChild(div);
+  const div = document.createElement("div");
+  div.className = "card";
+  const pdf = item.url?.toLowerCase().includes(".pdf");
+  const rawUrl = item.url || "#";
+  const linkUrl = rawUrl.startsWith("http://") || rawUrl.startsWith("https://") ? rawUrl : "https://" + rawUrl;
+
+  div.innerHTML = `
+    ${pdf ? `<span class="pdf-badge">PDF</span>` : ""}
+    <h3>${cleanHTML(item.title || "Untitled")}</h3>
+    <p>${cleanHTML(item.snippet || item.description || "No description available")}</p>
+    <div class="meta">
+      <span>${SOURCE_CATEGORIES[item.source?.toLowerCase()] || "Other"}</span>
+      <a class="link-btn" href="${linkUrl}" target="_blank" rel="noopener noreferrer">Open</a>
+    </div>
+  `;
+
+  // ensure link works even if parent div intercepts click
+  const link = div.querySelector("a");
+  link.addEventListener("click", e => {
+    e.stopPropagation(); // stop any parent click
   });
+
+  resultsGrid.appendChild(div);
+});
 
   pagination.classList.remove("hidden");
   prevBtn.disabled = PAGE === 1;
