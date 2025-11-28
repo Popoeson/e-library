@@ -152,7 +152,8 @@
   Built with Brave Search • Serpstack • Demo  
 </footer>
 
-<script>
+
+      <script>
 const API_BASE = "https://e-library-18tg.onrender.com";
 
 // ===== LOAD USER =====
@@ -253,11 +254,6 @@ function loadLastState() {
   renderResults({ originalQuery: q, summary: data.summary || "" });
 }
 
-function getSafeUrl(url) {
-  if (!url) return "#";
-  return url.startsWith("http://") || url.startsWith("https://") ? url : "https://" + url;
-}
-
 function renderBreadcrumbs(items) {
   const categories = [...new Set(items.map(it =>
     SOURCE_CATEGORIES[it.source?.toLowerCase()] || "Other"
@@ -313,34 +309,43 @@ function renderResults(data) {
   }
 
   pageItems.forEach(item => {
-const div = document.createElement("div");
-div.className = "card";
-const pdf = item.url?.toLowerCase().includes(".pdf");
+    const div = document.createElement("div");
+    div.className = "card";
+    const pdf = item.url?.toLowerCase().includes(".pdf");
 
-// Validate and fix URL
-let linkUrl = "#";
-try {
-if (item.url) {
-const urlObj = new URL(item.url.startsWith("http") ? item.url : "https://" + item.url);
-linkUrl = urlObj.href;
-}
-} catch (err) {
-linkUrl = "#";
-}
+    // Validate and fix URL
+    let linkUrl = "#";
+    try {
+      if (item.url) {
+        const urlObj = new URL(item.url.startsWith("http") ? item.url : "https://" + item.url);
+        linkUrl = urlObj.href;
+      }
+    } catch (err) {
+      linkUrl = "#";
+    }
 
-div.innerHTML = "${pdf ?"<span class="pdf-badge">PDF</span>": ""} <h3>${cleanHTML(item.title || "Untitled")}</h3> <p>${cleanHTML(item.snippet || item.description || "No description available")}</p> <div class="meta"> <span>${SOURCE_CATEGORIES[item.source?.toLowerCase()] || "Other"}</span> <a class="link-btn" href="#">Open</a> </div>";
+    // Fixed template literal with backticks
+    div.innerHTML = `
+      ${pdf ? `<span class="pdf-badge">PDF</span>` : ""}
+      <h3>${cleanHTML(item.title || "Untitled")}</h3>
+      <p>${cleanHTML(item.snippet || item.description || "No description available")}</p>
+      <div class="meta">
+        <span>${SOURCE_CATEGORIES[item.source?.toLowerCase()] || "Other"}</span>
+        <a class="link-btn" href="#">Open</a>
+      </div>
+    `;
 
-const link = div.querySelector("a");
-link.addEventListener("click", e => {
-e.preventDefault();
-e.stopPropagation();
-if (linkUrl !== "#") {
-window.open(linkUrl, "_blank", "noopener,noreferrer");
-}
-});
+    const link = div.querySelector("a");
+    link.addEventListener("click", e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (linkUrl !== "#") {
+        window.open(linkUrl, "_blank", "noopener,noreferrer");
+      }
+    });
 
-resultsGrid.appendChild(div);
-});
+    resultsGrid.appendChild(div);
+  });
 
   pagination.classList.remove("hidden");
   prevBtn.disabled = PAGE === 1;
