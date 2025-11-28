@@ -153,7 +153,7 @@
 </footer>
 
 
-      <script>
+<script>
 const API_BASE = "https://e-library-18tg.onrender.com";
 
 // ===== LOAD USER =====
@@ -220,12 +220,14 @@ const SOURCE_CATEGORIES = {
   unknown: "Other"
 };
 
+// Utility to clean HTML
 function cleanHTML(str) {
   const tmp = document.createElement("div");
   tmp.innerHTML = str || "";
   return tmp.textContent || tmp.innerText || "";
 }
 
+// Skeleton loader
 function showSkeleton() {
   resultsGrid.innerHTML = "";
   for (let i = 0; i < 6; i++) {
@@ -235,6 +237,7 @@ function showSkeleton() {
   }
 }
 
+// Save/load search state
 function saveState(q, data) {
   localStorage.setItem("elib_last_query", q);
   localStorage.setItem("elib_last_data", JSON.stringify(data));
@@ -254,6 +257,19 @@ function loadLastState() {
   renderResults({ originalQuery: q, summary: data.summary || "" });
 }
 
+// Safely get external URL
+function getSafeUrl(url) {
+  try {
+    if (!url) return null;
+    const fullUrl = url.startsWith("http://") || url.startsWith("https://") ? url : "https://" + url;
+    const u = new URL(fullUrl);
+    return u.href;
+  } catch {
+    return null;
+  }
+}
+
+// Breadcrumb rendering
 function renderBreadcrumbs(items) {
   const categories = [...new Set(items.map(it =>
     SOURCE_CATEGORIES[it.source?.toLowerCase()] || "Other"
@@ -277,6 +293,7 @@ function renderBreadcrumbs(items) {
   breadcrumbs.classList.remove("hidden");
 }
 
+// MAIN: render search results
 function renderResults(data) {
   let items = CURRENT_RESULTS;
 
@@ -313,16 +330,7 @@ function renderResults(data) {
     div.className = "card";
     const pdf = item.url?.toLowerCase().includes(".pdf");
 
-    // Validate and fix URL
-    let linkUrl = "#";
-    try {
-      if (item.url) {
-        const urlObj = new URL(item.url.startsWith("http") ? item.url : "https://" + item.url);
-        linkUrl = urlObj.href;
-      }
-    } catch (err) {
-      linkUrl = "#";
-    }
+    const linkUrl = getSafeUrl(item.url); // SAFELY get external URL
 
     div.innerHTML = `
       ${pdf ? `<span class="pdf-badge">PDF</span>` : ""}
@@ -330,13 +338,14 @@ function renderResults(data) {
       <p>${cleanHTML(item.snippet || item.description || "No description available")}</p>
       <div class="meta">
         <span>${SOURCE_CATEGORIES[item.source?.toLowerCase()] || "Other"}</span>
-        <a class="link-btn" href="${linkUrl}" target="_blank" rel="noopener noreferrer">Open</a>
+        ${linkUrl ? `<a class="link-btn" href="${linkUrl}" target="_blank" rel="noopener noreferrer">Open</a>` : ""}
       </div>
     `;
 
     resultsGrid.appendChild(div);
   });
 
+  // Pagination
   pagination.classList.remove("hidden");
   prevBtn.disabled = PAGE === 1;
   nextBtn.disabled = end >= total;
@@ -347,7 +356,7 @@ function renderResults(data) {
   renderBreadcrumbs(CURRENT_RESULTS);
 }
 
-// ------- SEARCH BUTTON EVENT -------
+// SEARCH BUTTON EVENT
 searchBtn.onclick = async () => {
   const query = searchInput.value.trim();
   if (!query) return;
@@ -379,5 +388,6 @@ searchBtn.onclick = async () => {
 
 window.onload = loadLastState;
 </script>
+
 </body>
 </html>
