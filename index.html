@@ -1,11 +1,12 @@
 <!doctype html>
+
 <html lang="en">  
 <head>  
 <meta charset="utf-8" />  
 <meta name="viewport" content="width=device-width,initial-scale=1" />  
-<title>E-Library — AI Search</title>  
+<title>E-Library — AI Search</title> 
 
-<style>  
+ <style>  
   :root {  
     --bg: #f4f6fa;  
     --card: #fff;  
@@ -113,12 +114,10 @@
   .pagination button:hover { background:#f3f4f6; }  
   footer { text-align:center; margin:40px 0 20px 0; font-size:13px; color: var(--muted); }  
 </style>  
-</head>  
 
-<body>
+</head> 
 
-<!-- GOOGLE STYLE TOPBAR -->
-<div class="topbar">
+ <body><!-- GOOGLE STYLE TOPBAR --><div class="topbar">
   <div id="userArea" class="user-area" style="display:none;">
     <span id="displayName" class="user-name"></span>
     <img id="displayPhoto" class="user-photo" />
@@ -128,40 +127,28 @@
       <a href="#">⚙ Manage Account</a>
     </div>
   </div>
-</div>
-
-<header class="site-header">  
+</div><header class="site-header">  
   <div class="container">  
     <span class="logo">📚 eLibrary AI</span>  
     <p class="tagline">Search books, articles & PDFs instantly — powered by AI.</p>  
   </div>  
-</header>  
-
-<main class="container">  
+</header>  <main class="container">  
   <section class="search-box">  
     <input id="searchInput" class="search-input" type="text" placeholder="Search e.g. Computer Engineering digital logic" />  
     <div class="controls">  
       <button id="searchBtn" class="btn primary">Search</button>  
       <label><input id="pdfOnly" type="checkbox" checked /> PDF only</label>  
     </div>  
-  </section>   
-
-  <section id="resultsInfo" class="results-info hidden"></section>  
+  </section>     <section id="resultsInfo" class="results-info hidden"></section>  
   <section id="aiSummary" class="ai-summary collapsed hidden"></section>  
   <section id="breadcrumbs" class="breadcrumbs hidden"></section>  
-  <section id="resultsGrid" class="results-grid"></section>  
-
-  <div id="pagination" class="pagination hidden">  
+  <section id="resultsGrid" class="results-grid"></section>    <div id="pagination" class="pagination hidden">  
     <button id="prevBtn">◀ Previous</button>  
     <button id="nextBtn">Next ▶</button>  
   </div>  
-</main>  
-
-<footer>  
+</main>  <footer>  
   Built with Brave Search • Serpstack • Demo  
-</footer>
-
-<script>
+</footer><script>
 const API_BASE = "https://e-library-18tg.onrender.com";
 
 // ===== LOAD USER =====
@@ -172,10 +159,16 @@ const dropdown = document.getElementById("dropdownMenu");
 const logoutBtn = document.getElementById("logoutBtn");
 
 function loadUser() {
-  const user = JSON.parse(localStorage.getItem("elib_user") || "{}");
-  if (user.name) {
-    displayName.textContent = user.name;
-    displayPhoto.src = user.photo || "https://www.gstatic.com/images/branding/product/1x/avatar_circle_blue_512dp.png";
+  const gName = localStorage.getItem("elib_user_name");
+  const gPhoto = localStorage.getItem("elib_user_photo");
+  const demoName = localStorage.getItem("elib_demo_name");
+
+  const name = gName || demoName;
+  const photo = gPhoto || "https://www.gstatic.com/images/branding/product/1x/avatar_circle_blue_512dp.png";
+
+  if (name) {
+    displayName.textContent = name;
+    displayPhoto.src = photo;
     userArea.style.display = "flex";
   }
 }
@@ -183,7 +176,9 @@ function loadUser() {
 userArea.onclick = () => dropdown.classList.toggle("open");
 
 logoutBtn.onclick = () => {
-  localStorage.removeItem("elib_user");
+  localStorage.removeItem("elib_user_name");
+  localStorage.removeItem("elib_user_photo");
+  localStorage.removeItem("elib_demo_name");
   window.location.href = "login.html";
 };
 
@@ -201,7 +196,7 @@ const aiSummary = document.getElementById('aiSummary');
 const breadcrumbs = document.getElementById('breadcrumbs');
 const pagination = document.getElementById('pagination');
 const prevBtn = document.getElementById('prevBtn');
-const nextBtn = document.getElementById>('nextBtn');
+const nextBtn = document.getElementById('nextBtn');
 
 let CURRENT_RESULTS = [];
 let PAGE = 1;
@@ -252,6 +247,11 @@ function loadLastState() {
   PAGE = 1;
 
   renderResults({ originalQuery: q, summary: data.summary || "" });
+}
+
+function getSafeUrl(url) {
+  if (!url) return "#";
+  return url.startsWith("http://") || url.startsWith("https://") ? url : "https://" + url;
 }
 
 function renderBreadcrumbs(items) {
@@ -311,14 +311,15 @@ function renderResults(data) {
   pageItems.forEach(item => {
     const div = document.createElement("div");
     div.className = "card";
-    let pdf = item.url?.toLowerCase().includes(".pdf");
+    const pdf = item.url?.toLowerCase().includes(".pdf");
+    const linkUrl = getSafeUrl(item.url);
     div.innerHTML = `
       ${pdf ? `<span class="pdf-badge">PDF</span>` : ""}
       <h3>${cleanHTML(item.title || "Untitled")}</h3>
       <p>${cleanHTML(item.snippet || item.description || "No description available")}</p>
       <div class="meta">
         <span>${SOURCE_CATEGORIES[item.source?.toLowerCase()] || "Other"}</span>
-        <a class="link-btn" href="${item.url}" target="_blank">Open</a>
+        <a class="link-btn" href="${linkUrl}" target="_blank">Open</a>
       </div>
     `;
     resultsGrid.appendChild(div);
