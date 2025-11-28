@@ -42,15 +42,12 @@ router.get(
     failureRedirect: `${FRONTEND_URL}/login.html`
   }),
   async (req, res) => {
-    // Send the user to callback.html with user info encoded
     const user = req.user;
-
     const url = `${FRONTEND_URL}/callback.html?name=${encodeURIComponent(
       user.name
     )}&email=${encodeURIComponent(user.email)}&provider=google&oauthId=${
       user.oauthId
     }&photo=${encodeURIComponent(user.photo || "")}`;
-
     res.redirect(url);
   }
 );
@@ -67,15 +64,34 @@ router.post(
   }),
   async (req, res) => {
     const user = req.user;
-
     const url = `${FRONTEND_URL}/callback.html?name=${encodeURIComponent(
       user.name
     )}&email=${encodeURIComponent(user.email)}&provider=apple&oauthId=${
       user.oauthId
     }&photo=${encodeURIComponent(user.photo || "")}`;
-
     res.redirect(url);
   }
 );
+
+// -----------------------------
+// 4. Get currently logged-in user
+// -----------------------------
+router.get("/api/me", (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ status: "error", message: "Not logged in" });
+  }
+
+  const { name, email, oauthProvider, oauthId, photo } = req.user;
+  res.json({
+    status: "success",
+    user: {
+      name,
+      email,
+      provider: oauthProvider,
+      oauthId,
+      photo
+    }
+  });
+});
 
 module.exports = router;
