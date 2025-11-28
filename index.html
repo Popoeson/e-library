@@ -162,19 +162,9 @@
 </footer>
 
 <script>
+const API_BASE = "https://e-library-18tg.onrender.com";
 
-/* ===== FORCE LOGIN ===== */
-(function enforceLogin() {
-  const g = localStorage.getItem("elib_user_google");
-  const a = localStorage.getItem("elib_user_apple");
-  const d = localStorage.getItem("elib_demo_account");
-
-  if (!g && !a && !d) {
-    window.location.href = "login.html";
-  }
-})();
-
-/* ===== LOAD USER ===== */
+// ===== LOAD USER =====
 const userArea = document.getElementById("userArea");
 const displayName = document.getElementById("displayName");
 const displayPhoto = document.getElementById("displayPhoto");
@@ -182,17 +172,10 @@ const dropdown = document.getElementById("dropdownMenu");
 const logoutBtn = document.getElementById("logoutBtn");
 
 function loadUser() {
-  let name =
-    localStorage.getItem("elib_user_name") ||
-    localStorage.getItem("elib_demo_name");
-
-  let photo =
-    localStorage.getItem("elib_user_photo") ||
-    "https://www.gstatic.com/images/branding/product/1x/avatar_circle_blue_512dp.png";
-
-  if (name) {
-    displayName.textContent = name;
-    displayPhoto.src = photo;
+  const user = JSON.parse(localStorage.getItem("elib_user") || "{}");
+  if (user.name) {
+    displayName.textContent = user.name;
+    displayPhoto.src = user.photo || "https://www.gstatic.com/images/branding/product/1x/avatar_circle_blue_512dp.png";
     userArea.style.display = "flex";
   }
 }
@@ -200,22 +183,15 @@ function loadUser() {
 userArea.onclick = () => dropdown.classList.toggle("open");
 
 logoutBtn.onclick = () => {
-  localStorage.removeItem("elib_user_name");
-  localStorage.removeItem("elib_user_photo");
-  localStorage.removeItem("elib_user_google");
-  localStorage.removeItem("elib_user_apple");
-  localStorage.removeItem("elib_demo_account");
-  localStorage.removeItem("elib_demo_name");
-
+  localStorage.removeItem("elib_user");
   window.location.href = "login.html";
 };
 
 loadUser();
 
-/* ----------------------------------------------------------------
-   SEARCH LOGIC
----------------------------------------------------------------- */
-const API_BASE = "https://e-library-18tg.onrender.com";
+// ----------------------------------------------------------------
+// SEARCH LOGIC
+// ----------------------------------------------------------------
 const searchInput = document.getElementById('searchInput');
 const searchBtn = document.getElementById('searchBtn');
 const pdfOnly = document.getElementById('pdfOnly');
@@ -225,7 +201,7 @@ const aiSummary = document.getElementById('aiSummary');
 const breadcrumbs = document.getElementById('breadcrumbs');
 const pagination = document.getElementById('pagination');
 const prevBtn = document.getElementById('prevBtn');
-const nextBtn = document.getElementById('nextBtn');
+const nextBtn = document.getElementById>('nextBtn');
 
 let CURRENT_RESULTS = [];
 let PAGE = 1;
@@ -335,9 +311,7 @@ function renderResults(data) {
   pageItems.forEach(item => {
     const div = document.createElement("div");
     div.className = "card";
-
     let pdf = item.url?.toLowerCase().includes(".pdf");
-
     div.innerHTML = `
       ${pdf ? `<span class="pdf-badge">PDF</span>` : ""}
       <h3>${cleanHTML(item.title || "Untitled")}</h3>
@@ -347,29 +321,20 @@ function renderResults(data) {
         <a class="link-btn" href="${item.url}" target="_blank">Open</a>
       </div>
     `;
-
     resultsGrid.appendChild(div);
   });
 
   pagination.classList.remove("hidden");
-
   prevBtn.disabled = PAGE === 1;
   nextBtn.disabled = end >= total;
 
-  prevBtn.onclick = () => {
-    PAGE--;
-    renderResults({ originalQuery: data.originalQuery, summary: data.summary });
-  };
-
-  nextBtn.onclick = () => {
-    PAGE++;
-    renderResults({ originalQuery: data.originalQuery, summary: data.summary });
-  };
+  prevBtn.onclick = () => { PAGE--; renderResults({ originalQuery: data.originalQuery, summary: data.summary }); };
+  nextBtn.onclick = () => { PAGE++; renderResults({ originalQuery: data.originalQuery, summary: data.summary }); };
 
   renderBreadcrumbs(CURRENT_RESULTS);
 }
 
-/* ------- SEARCH BUTTON EVENT ------- */
+// ------- SEARCH BUTTON EVENT -------
 searchBtn.onclick = async () => {
   const query = searchInput.value.trim();
   if (!query) return;
@@ -377,15 +342,21 @@ searchBtn.onclick = async () => {
   showSkeleton();
 
   try {
-    const res = await fetch(`${API_BASE}/api/search?q=${encodeURIComponent(query)}&pdfOnly=${pdfOnly.checked}`);
-    const data = await res.json();
+    const res = await fetch(`${API_BASE}/api/search`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ query, limit: 15, preferPdf: pdfOnly.checked })
+    });
 
+    if (!res.ok) throw new Error("Search failed");
+
+    const data = await res.json();
     CURRENT_RESULTS = data.results || [];
     PAGE = 1;
 
     saveState(query, data);
-
-    renderResults({ originalQuery: query, summary: data.summary });
+    renderResults({ originalQuery: query, summary: data.summary || "" });
 
   } catch (err) {
     console.error(err);
@@ -394,8 +365,6 @@ searchBtn.onclick = async () => {
 };
 
 window.onload = loadLastState;
-
 </script>
-
 </body>
 </html>
