@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Loading...</title>
+</head>
+
+<body style="font-family:Arial; padding:40px; text-align:center;">
+<h3>Signing you in...</h3>
+
+<script>
+const API_BASE = "https://e-library-18tg.onrender.com";
+
+// Wait for OAuth to complete then fetch user info
+fetch(`${API_BASE}/auths/me`, { credentials: "include" })
+  .then(res => res.json())
+  .then(user => {
+    if (!user || !user.email) {
+      window.location.href = "login.html";
+      return;
+    }
+
+    localStorage.setItem("elib_user", JSON.stringify({
+      name: user.name,
+      email: user.email,
+      provider: user.oauthProvider,
+      photo: user.photo || ""
+    }));
+
+    window.location.href = "index.html";
+  })
+  .catch(() => window.location.href = "login.html");
+</script>
+</body>
+</html>
