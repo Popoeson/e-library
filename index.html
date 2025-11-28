@@ -1,12 +1,11 @@
 <!doctype html>
-
 <html lang="en">  
 <head>  
 <meta charset="utf-8" />  
 <meta name="viewport" content="width=device-width,initial-scale=1" />  
-<title>E-Library — AI Search</title> 
+<title>E-Library — AI Search</title>  
 
- <style>  
+<style>  
   :root {  
     --bg: #f4f6fa;  
     --card: #fff;  
@@ -66,7 +65,9 @@
     flex-direction: column;
     overflow: hidden;
   }
-  .dropdown.open { display: flex; }
+  .dropdown.open {
+    display: flex;
+  }
   .dropdown a {
     padding: 12px 16px;
     text-decoration: none;
@@ -75,8 +76,12 @@
     border-bottom: 1px solid #f3f4f6;
     transition: background 0.2s;
   }
-  .dropdown a:hover { background: #f3f4f6; }
-  .dropdown a:last-child { border-bottom:none; }
+  .dropdown a:hover {
+    background: #f3f4f6;
+  }
+  .dropdown a:last-child {
+    border-bottom: none;
+  }
 
   /* ---------------- EXISTING DESIGN BELOW ---------------- */
   .site-header { text-align:center; padding:60px 0 40px 0; }  
@@ -114,10 +119,12 @@
   .pagination button:hover { background:#f3f4f6; }  
   footer { text-align:center; margin:40px 0 20px 0; font-size:13px; color: var(--muted); }  
 </style>  
+</head>  
 
-</head> 
+<body>
 
- <body><!-- GOOGLE STYLE TOPBAR --><div class="topbar">
+<!-- GOOGLE STYLE TOPBAR -->
+<div class="topbar">
   <div id="userArea" class="user-area" style="display:none;">
     <span id="displayName" class="user-name"></span>
     <img id="displayPhoto" class="user-photo" />
@@ -127,36 +134,41 @@
       <a href="#">⚙ Manage Account</a>
     </div>
   </div>
-</div><header class="site-header">  
+</div>
+
+<header class="site-header">  
   <div class="container">  
     <span class="logo">📚 eLibrary AI</span>  
     <p class="tagline">Search books, articles & PDFs instantly — powered by AI.</p>  
   </div>  
-</header>  <main class="container">  
+</header>  
+
+<main class="container">  
   <section class="search-box">  
     <input id="searchInput" class="search-input" type="text" placeholder="Search e.g. Computer Engineering digital logic" />  
     <div class="controls">  
       <button id="searchBtn" class="btn primary">Search</button>  
       <label><input id="pdfOnly" type="checkbox" checked /> PDF only</label>  
     </div>  
-  </section>    
- <section id="resultsInfo" class="results-info hidden"></section>  
+  </section>   
+
+  <section id="resultsInfo" class="results-info hidden"></section>  
   <section id="aiSummary" class="ai-summary collapsed hidden"></section>  
   <section id="breadcrumbs" class="breadcrumbs hidden"></section>  
-  <section id="resultsGrid" class="results-grid"></section>    <div id="pagination" class="pagination hidden">  
+  <section id="resultsGrid" class="results-grid"></section>  
+
+  <div id="pagination" class="pagination hidden">  
     <button id="prevBtn">◀ Previous</button>  
     <button id="nextBtn">Next ▶</button>  
   </div>  
 </main>  
+
 <footer>  
   Built with Brave Search • Serpstack • Demo  
 </footer>
 
-
- <script>
-const API_BASE = "https://e-library-18tg.onrender.com";
-
-// ===== LOAD USER =====
+<script>
+/* ------------------ USER HEADER LOGIC ------------------- */
 const userArea = document.getElementById("userArea");
 const displayName = document.getElementById("displayName");
 const displayPhoto = document.getElementById("displayPhoto");
@@ -164,34 +176,30 @@ const dropdown = document.getElementById("dropdownMenu");
 const logoutBtn = document.getElementById("logoutBtn");
 
 function loadUser() {
-  const gName = localStorage.getItem("elib_user_name");
-  const gPhoto = localStorage.getItem("elib_user_photo");
-  const demoName = localStorage.getItem("elib_demo_name");
-
-  const name = gName || demoName;
-  const photo = gPhoto || "https://www.gstatic.com/images/branding/product/1x/avatar_circle_blue_512dp.png";
+  const name = localStorage.getItem("elib_user_name");
+  const photo = localStorage.getItem("elib_user_photo");
 
   if (name) {
     displayName.textContent = name;
-    displayPhoto.src = photo;
+    displayPhoto.src = photo || "https://www.gstatic.com/images/branding/product/1x/avatar_circle_blue_512dp.png";
     userArea.style.display = "flex";
   }
 }
 
+// toggle dropdown
 userArea.onclick = () => dropdown.classList.toggle("open");
 
+// logout
 logoutBtn.onclick = () => {
   localStorage.removeItem("elib_user_name");
   localStorage.removeItem("elib_user_photo");
-  localStorage.removeItem("elib_demo_name");
   window.location.href = "login.html";
 };
 
 loadUser();
 
-// ----------------------------------------------------------------
-// SEARCH LOGIC
-// ----------------------------------------------------------------
+/* ------------------ YOUR ORIGINAL SEARCH ENGINE JS BELOW ------------------ */
+const API_BASE = "https://e-library-18tg.onrender.com";
 const searchInput = document.getElementById('searchInput');
 const searchBtn = document.getElementById('searchBtn');
 const pdfOnly = document.getElementById('pdfOnly');
@@ -220,24 +228,21 @@ const SOURCE_CATEGORIES = {
   unknown: "Other"
 };
 
-// Clean HTML from user-provided data
 function cleanHTML(str) {
   const tmp = document.createElement("div");
   tmp.innerHTML = str || "";
   return tmp.textContent || tmp.innerText || "";
 }
 
-// Skeleton loader
 function showSkeleton() {
   resultsGrid.innerHTML = "";
-  for (let i = 0; i < 6; i++) {
+  for (let i=0;i<6;i++){
     const block = document.createElement("div");
     block.className = "skeleton skeleton-card";
     resultsGrid.appendChild(block);
   }
 }
 
-// Save/load search state
 function saveState(q, data) {
   localStorage.setItem("elib_last_query", q);
   localStorage.setItem("elib_last_data", JSON.stringify(data));
@@ -257,34 +262,17 @@ function loadLastState() {
   renderResults({ originalQuery: q, summary: data.summary || "" });
 }
 
-// Safely normalize external URLs
-function getSafeUrl(url) {
-  if (!url) return "#";
-  try {
-    const fullUrl = url.startsWith("http://") || url.startsWith("https://") ? url : "https://" + url;
-    return new URL(fullUrl).href;
-  } catch {
-    return "#";
-  }
-}
-
-// Breadcrumb rendering
 function renderBreadcrumbs(items) {
-  const categories = [...new Set(items.map(it =>
-    SOURCE_CATEGORIES[it.source?.toLowerCase()] || "Other"
-  ))];
-
+  const categories = [...new Set(items.map(it => SOURCE_CATEGORIES[it.source?.toLowerCase()] || "Other"))];
   breadcrumbs.innerHTML = "";
+
   categories.forEach(cat => {
     const btn = document.createElement("button");
     btn.textContent = cat;
     btn.className = cat === activeSource ? "active" : "";
     btn.onclick = () => {
       activeSource = (cat === activeSource) ? null : cat;
-      renderResults({
-        originalQuery: searchInput.value,
-        summary: aiSummary.textContent
-      });
+      renderResults({ originalQuery: searchInput.value, summary: aiSummary.textContent });
     };
     breadcrumbs.appendChild(btn);
   });
@@ -292,20 +280,14 @@ function renderBreadcrumbs(items) {
   breadcrumbs.classList.remove("hidden");
 }
 
-// MAIN: render search results
 function renderResults(data) {
   let items = CURRENT_RESULTS;
-
-  if (activeSource) {
-    items = items.filter(it =>
-      (SOURCE_CATEGORIES[it.source?.toLowerCase()] || "Other") === activeSource
-    );
-  }
+  if (activeSource) items = items.filter(it => (SOURCE_CATEGORIES[it.source?.toLowerCase()] || "Other") === activeSource);
 
   const total = items.length;
-  const start = (PAGE - 1) * PAGE_SIZE;
-  const end = start + PAGE_SIZE;
-  const pageItems = items.slice(start, end);
+  const start = (PAGE-1)*PAGE_SIZE;
+  const end = start+PAGE_SIZE;
+  const pageItems = items.slice(start,end);
 
   resultsGrid.innerHTML = "";
   resultsInfo.textContent = `Showing ${items.length} results for "${data.originalQuery}"`;
@@ -320,72 +302,110 @@ function renderResults(data) {
   };
 
   if (pageItems.length === 0) {
-    resultsGrid.innerHTML = "<p>No results found.</p>";
+    resultsGrid.innerHTML = '<p style="grid-column:1/-1;padding:18px;color:#6b7280">No results found.</p>';
+    pagination.classList.add("hidden");
+    breadcrumbs.classList.add("hidden");
     return;
   }
 
-  pageItems.forEach(item => {
-    const div = document.createElement("div");
-    div.className = "card";
-    const pdf = item.url?.toLowerCase().includes(".pdf");
+  renderBreadcrumbs(items);
 
-    const linkUrl = getSafeUrl(item.url);
+  pageItems.forEach(it=>{
+    const card = document.createElement("div");
+    card.className = "card";
 
-    div.innerHTML = `
-      ${pdf ? `<span class="pdf-badge">PDF</span>` : ""}
-      <h3>${cleanHTML(item.title || "Untitled")}</h3>
-      <p>${cleanHTML(item.snippet || item.description || "No description available")}</p>
-      <div class="meta">
-        <span>${SOURCE_CATEGORIES[item.source?.toLowerCase()] || "Other"}</span>
-        <a class="link-btn" href="${linkUrl}" target="_blank" rel="noopener noreferrer">Open</a>
-      </div>
-    `;
+    if (it.link && it.link.toLowerCase().endsWith(".pdf")) {
+      const badge = document.createElement("div");
+      badge.className = "pdf-badge";
+      badge.textContent = "PDF";
+      card.appendChild(badge);
+    }
 
-    resultsGrid.appendChild(div);
+    const title = document.createElement("h3");
+    title.textContent = it.title || it.link || "Untitled";
+    card.appendChild(title);
+
+    const snippet = document.createElement("p");
+    snippet.textContent = cleanHTML(it.snippet);
+    card.appendChild(snippet);
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+
+    const source = document.createElement("div");
+    const hostname = it.link ? new URL(it.link).hostname : "";
+    source.textContent = SOURCE_CATEGORIES[it.source?.toLowerCase()] || it.source || hostname || "Unknown";
+    meta.appendChild(source);
+
+    const actions = document.createElement("div");
+    const a = document.createElement("a");
+    a.href = it.link || "#";
+    a.target = "_blank";
+    a.className = "link-btn";
+    a.textContent = it.link ? "Open" : "No link";
+    actions.appendChild(a);
+
+    meta.appendChild(actions);
+    card.appendChild(meta);
+    resultsGrid.appendChild(card);
   });
 
-  // Pagination
   pagination.classList.remove("hidden");
-  prevBtn.disabled = PAGE === 1;
-  nextBtn.disabled = end >= total;
-
-  prevBtn.onclick = () => { PAGE--; renderResults({ originalQuery: data.originalQuery, summary: data.summary }); };
-  nextBtn.onclick = () => { PAGE++; renderResults({ originalQuery: data.originalQuery, summary: data.summary }); };
-
-  renderBreadcrumbs(CURRENT_RESULTS);
+  prevBtn.disabled = PAGE===1;
+  nextBtn.disabled = end>=total;
 }
 
-// SEARCH BUTTON EVENT
-searchBtn.onclick = async () => {
-  const query = searchInput.value.trim();
-  if (!query) return;
+async function doSearch() {
+  const q = searchInput.value.trim();
+  if (!q) { alert("Please type a search term"); return; }
 
   showSkeleton();
+  aiSummary.classList.add("hidden");
+  resultsInfo.classList.add("hidden");
+  pagination.classList.add("hidden");
+  breadcrumbs.classList.add("hidden");
 
   try {
-    const res = await fetch(`${API_BASE}/api/search`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ query, limit: 15, preferPdf: pdfOnly.checked })
+    const resp = await fetch(`${API_BASE}/api/search`, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({ query:q, limit:20, preferPdf: pdfOnly.checked })
     });
 
-    if (!res.ok) throw new Error("Search failed");
+    if (!resp.ok) throw new Error("Search failed");
+    const data = await resp.json();
 
-    const data = await res.json();
     CURRENT_RESULTS = data.results || [];
     PAGE = 1;
+    activeSource = null;
 
-    saveState(query, data);
-    renderResults({ originalQuery: query, summary: data.summary || "" });
-
-  } catch (err) {
-    console.error(err);
-    resultsGrid.innerHTML = "<p>Error loading results.</p>";
+    saveState(q, data);
+    renderResults(data);
   }
-};
+  catch(err){
+    resultsGrid.innerHTML = '<p style="grid-column:1/-1;padding:18px;color:#ff4d4f">Search failed — network/server error</p>';
+  }
+}
 
-window.onload = loadLastState;
+prevBtn.onclick = () => { PAGE--; renderResults({ originalQuery: searchInput.value, summary: aiSummary.textContent }); };
+nextBtn.onclick = () => { PAGE++; renderResults({ originalQuery: searchInput.value, summary: aiSummary.textContent }); };
+
+searchBtn.onclick = doSearch;
+searchInput.addEventListener("keydown", e => { if(e.key==="Enter") doSearch(); });
+
+// Load last state safely on page load
+window.onload = () => {
+  CURRENT_RESULTS = [];
+  PAGE = 1;
+  activeSource = null;
+  resultsGrid.innerHTML = "";
+  resultsInfo.classList.add("hidden");
+  breadcrumbs.classList.add("hidden");
+  aiSummary.classList.add("hidden");
+  pagination.classList.add("hidden");
+  loadLastState();
+};
 </script>
-</body>
+
+</body>  
 </html>
