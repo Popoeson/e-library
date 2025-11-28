@@ -21,44 +21,52 @@ mongoose.connect(process.env.MONGO_URI)
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Required for secure cookies on Render (HTTPS)
+// ---------------------- MIDDLEWARE ----------------------
+
+// Trust proxy (needed for Render HTTPS cookies)
 app.set("trust proxy", 1);
 
-// ======= SESSION MIDDLEWARE (Fixes Google OAuth 500) =======
+// CORS setup to allow frontend requests
+app.use(cors({
+  origin: "https://e-library-two-tau.vercel.app", // frontend URL
+  credentials: true
+}));
+
+// JSON parser
+app.use(express.json());
+
+// Session setup
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "supersecretkey",
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: true,   // Render uses HTTPS
+      secure: true,   // must be true for HTTPS
       httpOnly: true,
+      sameSite: "none", // allows cross-site cookies for OAuth
       maxAge: 24 * 60 * 60 * 1000 // 1 day
     }
   })
 );
 
-// ======= MIDDLEWARE =======
-app.use(cors());
-app.use(express.json());
-
-// Passport session setup
+// Passport init + session
 app.use(passport.initialize());
 app.use(passport.session());
 
-// ======= SERVE FRONTEND FILES =======
+// ---------------------- STATIC FILES ----------------------
 app.use(express.static(path.join(__dirname)));
 
-// ======= API ROUTES =======
+// ---------------------- API ROUTES ----------------------
 app.use("/api/search", searchRoutes);
 app.use("/auths", authRoutes);
 
-// ======= FRONTEND CATCH-ALL =======
+// ---------------------- FRONTEND CATCH-ALL ----------------------
 app.get(/^\/(?!api|auths).*/, (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// ======= START SERVER =======
+// ---------------------- START SERVER ----------------------
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
