@@ -1,7 +1,7 @@
 // config/passport.js
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
-const AppleStrategy = require("passport-apple").Strategy;
+// const AppleStrategy = require("passport-apple").Strategy;
 const User = require("../model/user");
 
 // ------------------------------------
@@ -62,7 +62,7 @@ passport.use(
 // ------------------------------------
 // 3. APPLE STRATEGY
 // ------------------------------------
-passport.use(
+/* passport.use(
   new AppleStrategy(
     {
       clientID: process.env.APPLE_CLIENT_ID,
@@ -94,6 +94,6 @@ passport.use(
       }
     }
   )
-);
+); */
 
 module.exports = passport;
