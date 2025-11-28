@@ -324,25 +324,15 @@ function renderResults(data) {
       linkUrl = "#";
     }
 
-    // Fixed template literal with backticks
     div.innerHTML = `
       ${pdf ? `<span class="pdf-badge">PDF</span>` : ""}
       <h3>${cleanHTML(item.title || "Untitled")}</h3>
       <p>${cleanHTML(item.snippet || item.description || "No description available")}</p>
       <div class="meta">
         <span>${SOURCE_CATEGORIES[item.source?.toLowerCase()] || "Other"}</span>
-        <a class="link-btn" href="#">Open</a>
+        <a class="link-btn" href="${linkUrl}" target="_blank" rel="noopener noreferrer">Open</a>
       </div>
     `;
-
-    const link = div.querySelector("a");
-    link.addEventListener("click", e => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (linkUrl !== "#") {
-        window.open(linkUrl, "_blank", "noopener,noreferrer");
-      }
-    });
 
     resultsGrid.appendChild(div);
   });
