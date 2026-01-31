@@ -19,6 +19,6 @@
     "passport-apple": "^2.0.0",
      "express-session": "^1.17.3",
     "mongoose": "^8.3.1",
-     "groq-sdk": "^0.1.0"
+     "groq-sdk": "^0.20.0"
   }
 }
