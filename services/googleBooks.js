@@ -1,7 +1,7 @@
 // services/googleBooks.js
 // No import needed — fetch is global in Node 18+
 
- const GOOGLE_API_KEY = process.env.GOOGLE_BOOKS_KEY || "";
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || "";
 
 async function searchGoogleBooks(query, limit = 5) {
   try {
@@ -19,15 +19,29 @@ async function searchGoogleBooks(query, limit = 5) {
     const data = await res.json();
 
     return (data.items || []).map(item => {
-      const snippetRaw = item.volumeInfo.description || item.volumeInfo.subtitle || "";
-      const snippet = snippetRaw.length > 300 ? snippetRaw.slice(0, 300) + "…" : snippetRaw;
+      const volumeInfo = item.volumeInfo || {};
+
+      // Clean snippet / description
+      const snippetRaw = volumeInfo.description || volumeInfo.subtitle || "";
+      const snippet = snippetRaw.replace(/<\/?[^>]+(>|$)/g, "").slice(0, 300) + (snippetRaw.length > 300 ? "…" : "");
+
+      // Extract ISBN-13 if available
+      let isbn13 = null;
+      if (volumeInfo.industryIdentifiers) {
+        const isbnObj = volumeInfo.industryIdentifiers.find(i => i.type === "ISBN_13");
+        if (isbnObj) isbn13 = isbnObj.identifier;
+      }
 
       return {
-        title: item.volumeInfo.title || "Untitled",
-        link: item.volumeInfo.previewLink || item.volumeInfo.infoLink || "",
+        title: volumeInfo.title || "Untitled",
+        link: volumeInfo.previewLink || volumeInfo.infoLink || "",
         snippet,
         source: "googlebooks",
         type: "book",
+        category: "Books",
+        authors: volumeInfo.authors || [],
+        published: volumeInfo.publishedDate || null,
+        isbn13
       };
     });
 
