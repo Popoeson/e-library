@@ -186,8 +186,10 @@ function loadUser() {
   }
 }
 
+// toggle dropdown
 userArea.onclick = () => dropdown.classList.toggle("open");
 
+// logout
 logoutBtn.onclick = () => {
   localStorage.removeItem("elib_user_name");
   localStorage.removeItem("elib_user_photo");
@@ -196,7 +198,7 @@ logoutBtn.onclick = () => {
 
 loadUser();
 
-/* ------------------ SEARCH LOGIC ------------------- */
+/* ------------------ SEARCH ENGINE JS ------------------ */
 const API_BASE = "https://e-library-18tg.onrender.com";
 const searchInput = document.getElementById('searchInput');
 const searchBtn = document.getElementById('searchBtn');
@@ -209,9 +211,9 @@ const pagination = document.getElementById('pagination');
 const prevBtn = document.getElementById('prevBtn');
 const nextBtn = document.getElementById('nextBtn');
 
-const PAGE_SIZE = 12;
-let CURRENT_RESULTS = {};
+let CURRENT_RESULTS = [];
 let PAGE = 1;
+const PAGE_SIZE = 12;
 let activeSource = null;
 
 const SOURCE_CATEGORIES = {
@@ -232,17 +234,15 @@ function cleanHTML(str) {
   return tmp.textContent || tmp.innerText || "";
 }
 
-/* ------------------ SKELETON ------------------- */
 function showSkeleton() {
   resultsGrid.innerHTML = "";
-  for (let i=0;i<6;i++){
+  for (let i = 0; i < 6; i++) {
     const block = document.createElement("div");
     block.className = "skeleton skeleton-card";
     resultsGrid.appendChild(block);
   }
 }
 
-/* ------------------ STATE STORAGE ------------------- */
 function saveState(q, data) {
   localStorage.setItem("elib_last_query", q);
   localStorage.setItem("elib_last_data", JSON.stringify(data));
@@ -255,22 +255,71 @@ function loadLastState() {
 
   searchInput.value = q;
   const data = JSON.parse(raw);
-  CURRENT_RESULTS = data.resultsPerService || {};
-  PAGE = 1;
-  activeSource = null;
 
+  CURRENT_RESULTS = data.resultsPerService || [];
+  PAGE = 1;
   renderResultsPage();
-  if (data.summary) showAISummary(data.summary);
+  showAISummary(data.summary || "");
 }
 
-/* ------------------ APPEND RESULTS ------------------- */
-function appendResults(service, items) {
-  if (!items || items.length === 0) return;
-  items.forEach(it => {
+function showAISummary(summary) {
+  aiSummary.textContent = summary || "No summary available.";
+  aiSummary.classList.remove("hidden");
+  aiSummary.classList.add("collapsed");
+  aiSummary.onclick = () => {
+    aiSummary.classList.toggle("collapsed");
+    aiSummary.classList.toggle("expanded");
+  };
+}
+
+function renderBreadcrumbs(items) {
+  const categories = [...new Set(items.map(it => SOURCE_CATEGORIES[it.source?.toLowerCase()] || "Other"))];
+  breadcrumbs.innerHTML = "";
+
+  categories.forEach(cat => {
+    const btn = document.createElement("button");
+    btn.textContent = cat;
+    btn.className = cat === activeSource ? "active" : "";
+    btn.onclick = () => {
+      activeSource = (cat === activeSource) ? null : cat;
+      renderResultsPage();
+    };
+    breadcrumbs.appendChild(btn);
+  });
+
+  breadcrumbs.classList.remove("hidden");
+}
+
+function renderResultsPage() {
+  // Flatten CURRENT_RESULTS into a single array
+  let items = Object.values(CURRENT_RESULTS).flat();
+  if (activeSource) {
+    items = items.filter(it => (SOURCE_CATEGORIES[it.source?.toLowerCase()] || "Other") === activeSource);
+  }
+
+  const total = items.length;
+  const start = (PAGE - 1) * PAGE_SIZE;
+  const end = start + PAGE_SIZE;
+  const pageItems = items.slice(start, end);
+
+  resultsGrid.innerHTML = "";
+  resultsInfo.textContent = `Showing ${items.length} results for "${searchInput.value}"`;
+  resultsInfo.classList.remove("hidden");
+
+  if (pageItems.length === 0) {
+    resultsGrid.innerHTML = '<p style="grid-column:1/-1;padding:18px;color:#6b7280">No results found.</p>';
+    pagination.classList.add("hidden");
+    breadcrumbs.classList.add("hidden");
+    return;
+  }
+
+  renderBreadcrumbs(items);
+
+  pageItems.forEach(it => {
     const card = document.createElement("div");
     card.className = "card";
 
-    if (it.link && (it.type==="pdf" || it.link.toLowerCase().endsWith(".pdf"))) {
+    if (it.link && it.link.toLowerCase().endsWith(".pdf")) {
       const badge = document.createElement("div");
       badge.className = "pdf-badge";
       badge.textContent = "PDF";
@@ -289,7 +338,8 @@ function appendResults(service, items) {
     meta.className = "meta";
 
     const source = document.createElement("div");
-    source.textContent = SOURCE_CATEGORIES[it.source?.toLowerCase()] || it.source || "Other";
+    const hostname = it.link ? new URL(it.link).hostname : "";
+    source.textContent = SOURCE_CATEGORIES[it.source?.toLowerCase()] || it.source || hostname || "Unknown";
     meta.appendChild(source);
 
     const actions = document.createElement("div");
@@ -304,62 +354,12 @@ function appendResults(service, items) {
     card.appendChild(meta);
     resultsGrid.appendChild(card);
   });
-}
-
-/* ------------------ BREADCRUMBS ------------------- */
-function updateBreadcrumbs() {
-  const allItems = Object.values(CURRENT_RESULTS).flat();
-  const categories = [...new Set(allItems.map(it => SOURCE_CATEGORIES[it.source?.toLowerCase()] || "Other"))];
-  breadcrumbs.innerHTML = "";
-
-  categories.forEach(cat => {
-    const btn = document.createElement("button");
-    btn.textContent = cat;
-    btn.className = cat === activeSource ? "active" : "";
-    btn.onclick = () => {
-      activeSource = (cat === activeSource) ? null : cat;
-      renderResultsPage();
-    };
-    breadcrumbs.appendChild(btn);
-  });
-
-  if (categories.length > 0) breadcrumbs.classList.remove("hidden");
-  else breadcrumbs.classList.add("hidden");
-}
-
-/* ------------------ RENDER PAGE ------------------- */
-function renderResultsPage() {
-  let items = Object.values(CURRENT_RESULTS).flat();
-  if (activeSource) items = items.filter(it => (SOURCE_CATEGORIES[it.source?.toLowerCase()] || "Other") === activeSource);
-
-  const total = items.length;
-  const start = (PAGE-1)*PAGE_SIZE;
-  const end = start+PAGE_SIZE;
-  const pageItems = items.slice(start,end);
-
-  resultsGrid.innerHTML = "";
-  appendResults(null, pageItems);
-
-  resultsInfo.textContent = `Showing ${items.length} results for "${searchInput.value}"`;
-  resultsInfo.classList.remove("hidden");
 
   pagination.classList.remove("hidden");
-  prevBtn.disabled = PAGE===1;
-  nextBtn.disabled = end>=total;
+  prevBtn.disabled = PAGE === 1;
+  nextBtn.disabled = end >= total;
 }
 
-/* ------------------ AI SUMMARY ------------------- */
-function showAISummary(text) {
-  aiSummary.textContent = text ? cleanHTML(text) : "No summary available.";
-  aiSummary.classList.remove("hidden");
-  aiSummary.classList.add("collapsed");
-  aiSummary.onclick = () => {
-    aiSummary.classList.toggle("collapsed");
-    aiSummary.classList.toggle("expanded");
-  };
-}
-
-/* ------------------ SEARCH ------------------- */
 async function doSearch() {
   const q = searchInput.value.trim();
   if (!q) { alert("Please type a search term"); return; }
@@ -370,49 +370,42 @@ async function doSearch() {
   pagination.classList.add("hidden");
   breadcrumbs.classList.add("hidden");
 
-  CURRENT_RESULTS = {
-    serpstack: [], brave: [], googlebooks: [], openlibrary: [],
-    internetarchive: [], crossref: [], arxiv: [], oercommons: []
-  };
-  PAGE = 1;
-  activeSource = null;
+  try {
+    const resp = await fetch(`${API_BASE}/api/search`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: q, limit: 50, preferPdf: pdfOnly.checked })
+    });
 
-  const services = Object.keys(CURRENT_RESULTS);
+    if (!resp.ok) throw new Error("Search failed");
+    const data = await resp.json();
 
-  // fetch per service incrementally
-  await Promise.all(services.map(async service => {
-    try {
-      const resp = await fetch(`${API_BASE}/api/search/${service}`, {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({ query:q, limit:20, preferPdf: pdfOnly.checked })
-      });
-      if (!resp.ok) throw new Error(`${service} failed`);
-      const data = await resp.json();
-      CURRENT_RESULTS[service] = data.results || [];
-      appendResults(service, data.results || []);
-      updateBreadcrumbs();
-    } catch(err){
-      console.warn(`${service} fetch error:`, err.message);
-    }
-  }));
+    // Store results per service
+    CURRENT_RESULTS = {};
+    (data.results || []).forEach(item => {
+      const s = item.source?.toLowerCase() || "unknown";
+      if (!CURRENT_RESULTS[s]) CURRENT_RESULTS[s] = [];
+      CURRENT_RESULTS[s].push(item);
+    });
 
-  // Save merged results
-  const merged = Object.values(CURRENT_RESULTS).flat();
-  saveState(q, { resultsPerService: CURRENT_RESULTS, summary: "" });
+    PAGE = 1;
+    activeSource = null;
+    saveState(q, { resultsPerService: CURRENT_RESULTS, summary: data.summary || "" });
+    renderResultsPage();
+    showAISummary(data.summary || "");
 
-  renderResultsPage();
+  } catch (err) {
+    resultsGrid.innerHTML = '<p style="grid-column:1/-1;padding:18px;color:#ff4d4f">Search failed — network/server error</p>';
+    console.error("Search error:", err.message);
+  }
 }
 
-/* ------------------ PAGINATION ------------------- */
 prevBtn.onclick = () => { PAGE--; renderResultsPage(); };
 nextBtn.onclick = () => { PAGE++; renderResultsPage(); };
-
-/* ------------------ SEARCH EVENTS ------------------- */
 searchBtn.onclick = doSearch;
-searchInput.addEventListener("keydown", e => { if(e.key==="Enter") doSearch(); });
+searchInput.addEventListener("keydown", e => { if (e.key === "Enter") doSearch(); });
 
-/* ------------------ INITIALIZE ------------------- */
+// Load last state safely on page load
 window.onload = () => {
   resultsGrid.innerHTML = "";
   resultsInfo.classList.add("hidden");
@@ -422,6 +415,5 @@ window.onload = () => {
   loadLastState();
 };
 </script>
-
 </body>  
 </html>
