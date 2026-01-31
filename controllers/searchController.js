@@ -36,12 +36,8 @@ router.post("/", async (req, res) => {
        1️⃣ AI QUERY REWRITE (STRICT SUBJECT LOCK)
     ================================================= */
     let rewrittenQuery = query;
-
     try {
-      rewrittenQuery = await groq.rewriteQuery({
-        query,
-        subject
-      });
+      rewrittenQuery = await groq.rewriteQuery({ query, subject });
     } catch (err) {
       console.warn("⚠️ Groq rewrite failed:", err.message);
     }
@@ -89,14 +85,14 @@ router.post("/", async (req, res) => {
        4️⃣ Merge + De-duplicate
     ================================================= */
     const seen = new Set();
-    const results = [];
+    const mergedResults = [];
 
     const pushUnique = (items = []) => {
       for (const item of items) {
         const key = (item.link || item.id || "").toLowerCase();
         if (!key || seen.has(key)) continue;
         seen.add(key);
-        results.push(item);
+        mergedResults.push(item);
       }
     };
 
@@ -110,7 +106,23 @@ router.post("/", async (req, res) => {
     pushUnique(oerResults);
 
     /* =================================================
-       5️⃣ AI SUMMARY (Homepage use)
+       5️⃣ AI RELEVANCE FILTERING (STRICT SUBJECT MATCH)
+       🔥 THIS IS THE KEY ADDITION
+    ================================================= */
+    let filteredResults = mergedResults;
+
+    try {
+      filteredResults = await groq.filterResultsByRelevance({
+        query: rewrittenQuery,
+        subject,
+        results: mergedResults
+      });
+    } catch (err) {
+      console.warn("⚠️ AI relevance filtering failed — returning raw results");
+    }
+
+    /* =================================================
+       6️⃣ AI SUMMARY (Homepage use)
     ================================================= */
     let summary = "";
     try {
@@ -123,7 +135,7 @@ router.post("/", async (req, res) => {
     }
 
     /* =================================================
-       6️⃣ Response
+       7️⃣ Response
     ================================================= */
     return res.json({
       status: "success",
@@ -132,7 +144,7 @@ router.post("/", async (req, res) => {
       subject,
       finalSearch,
       summary,
-      resultsCount: results.length,
+      resultsCount: filteredResults.length,
       sourcesCount: {
         serpstack: serpResults.length,
         brave: braveResults.length,
@@ -143,7 +155,7 @@ router.post("/", async (req, res) => {
         arxiv: arxivResults.length,
         oer: oerResults.length
       },
-      results
+      results: filteredResults
     });
 
   } catch (err) {
