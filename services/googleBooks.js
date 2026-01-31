@@ -1,35 +1,48 @@
 // services/googleBooks.js
-// No import needed — fetch is global in Node 18+
-
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || "";
 
 async function searchGoogleBooks(query, limit = 5) {
   try {
+    // 🔐 Google Books hard limits
+    const safeLimit = Math.min(Math.max(Number(limit) || 5, 1), 40);
+
     const url =
-      `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}` +
-      `&maxResults=${limit}` +
+      `https://www.googleapis.com/books/v1/volumes` +
+      `?q=${encodeURIComponent(query)}` +
+      `&maxResults=${safeLimit}` +
+      `&printType=books` +
+      `&orderBy=relevance` +
       (GOOGLE_API_KEY ? `&key=${GOOGLE_API_KEY}` : "");
 
     const res = await fetch(url);
+
     if (!res.ok) {
-      console.error("Google Books Fetch Error:", res.status, res.statusText);
-      throw new Error("Google Books search failed");
+      const err = await res.text();
+      console.error("📕 Google Books Fetch Error:", err);
+      return [];
     }
 
     const data = await res.json();
 
-    return (data.items || []).map(item => {
+    if (!Array.isArray(data.items)) return [];
+
+    return data.items.map(item => {
       const volumeInfo = item.volumeInfo || {};
 
-      // Clean snippet / description
-      const snippetRaw = volumeInfo.description || volumeInfo.subtitle || "";
-      const snippet = snippetRaw.replace(/<\/?[^>]+(>|$)/g, "").slice(0, 300) + (snippetRaw.length > 300 ? "…" : "");
+      const rawSnippet =
+        volumeInfo.description ||
+        volumeInfo.subtitle ||
+        "";
 
-      // Extract ISBN-13 if available
+      const snippet = rawSnippet
+        .replace(/<\/?[^>]+(>|$)/g, "")
+        .slice(0, 300) + (rawSnippet.length > 300 ? "…" : "");
+
+      // ISBN-13
       let isbn13 = null;
-      if (volumeInfo.industryIdentifiers) {
-        const isbnObj = volumeInfo.industryIdentifiers.find(i => i.type === "ISBN_13");
-        if (isbnObj) isbn13 = isbnObj.identifier;
+      if (Array.isArray(volumeInfo.industryIdentifiers)) {
+        const isbn = volumeInfo.industryIdentifiers.find(i => i.type === "ISBN_13");
+        if (isbn) isbn13 = isbn.identifier;
       }
 
       return {
@@ -46,7 +59,7 @@ async function searchGoogleBooks(query, limit = 5) {
     });
 
   } catch (err) {
-    console.error("Google Books Error:", err.message);
+    console.error("📕 Google Books Error:", err.message);
     return [];
   }
 }
