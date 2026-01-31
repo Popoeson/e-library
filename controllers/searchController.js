@@ -82,32 +82,31 @@ router.post("/", async (req, res) => {
     ]);
 
     /* =================================================
-       4️⃣ Merge + De-duplicate
+       4️⃣ Merge + De-duplicate + Category tagging
     ================================================= */
     const seen = new Set();
     const mergedResults = [];
 
-    const pushUnique = (items = []) => {
+    const pushUnique = (items = [], category = "Others") => {
       for (const item of items) {
         const key = (item.link || item.id || "").toLowerCase();
         if (!key || seen.has(key)) continue;
         seen.add(key);
-        mergedResults.push(item);
+        mergedResults.push({ ...item, category });
       }
     };
 
-    pushUnique(serpResults);
-    pushUnique(braveResults);
-    pushUnique(googleBooksResults);
-    pushUnique(openLibResults);
-    pushUnique(iaResults);
-    pushUnique(crossrefResults);
-    pushUnique(arxivResults);
-    pushUnique(oerResults);
+    pushUnique(serpResults, "Web");
+    pushUnique(braveResults, "Web");
+    pushUnique(googleBooksResults, "Books");
+    pushUnique(openLibResults, "Books");
+    pushUnique(iaResults, "Archives");
+    pushUnique(crossrefResults, "Journals");
+    pushUnique(arxivResults, "Journals");
+    pushUnique(oerResults, "Journals");
 
     /* =================================================
        5️⃣ AI RELEVANCE FILTERING (STRICT SUBJECT MATCH)
-       🔥 Filters merged results using Groq
     ================================================= */
     let filteredResults = mergedResults;
     try {
@@ -131,8 +130,14 @@ router.post("/", async (req, res) => {
     }
 
     /* =================================================
-       7️⃣ Response
+       7️⃣ Response with categories (for breadcrumbs)
     ================================================= */
+    const categories = ["Web", "Books", "Journals", "Archives", "Others"];
+    const resultsByCategory = categories.map(cat => ({
+      category: cat,
+      results: filteredResults.filter(r => r.category === cat)
+    }));
+
     return res.json({
       status: "success",
       originalQuery: query,
@@ -151,7 +156,7 @@ router.post("/", async (req, res) => {
         arxiv: arxivResults.length,
         oer: oerResults.length
       },
-      results: filteredResults
+      results: resultsByCategory
     });
 
   } catch (err) {
