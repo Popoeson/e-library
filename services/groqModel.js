@@ -7,7 +7,7 @@ if (!GROQ_API_KEY) {
 }
 
 const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
-const MODEL = "llama-3.1-8b-instruct";
+const MODEL = "llama-3.1-70b-versatile";
 
 /* =========================================================
    Shared request helper
