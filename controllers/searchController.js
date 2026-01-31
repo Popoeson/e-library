@@ -56,7 +56,7 @@ router.post("/", async (req, res) => {
       try {
         return await fn();
       } catch (err) {
-        console.warn(`⚠️ ${label} failed`);
+        console.warn(`⚠️ ${label} failed:`, err.message || err);
         return [];
       }
     };
@@ -107,10 +107,9 @@ router.post("/", async (req, res) => {
 
     /* =================================================
        5️⃣ AI RELEVANCE FILTERING (STRICT SUBJECT MATCH)
-       🔥 THIS IS THE KEY ADDITION
+       🔥 Filters merged results using Groq
     ================================================= */
     let filteredResults = mergedResults;
-
     try {
       filteredResults = await groq.filterResultsByRelevance({
         query: rewrittenQuery,
@@ -126,12 +125,9 @@ router.post("/", async (req, res) => {
     ================================================= */
     let summary = "";
     try {
-      summary = await groq.summarizeTopic({
-        query: rewrittenQuery,
-        subject
-      });
+      summary = await groq.summarizeTopic({ query: rewrittenQuery, subject });
     } catch (err) {
-      console.warn("⚠️ Summary generation failed");
+      console.warn("⚠️ Summary generation failed:", err.message || err);
     }
 
     /* =================================================
