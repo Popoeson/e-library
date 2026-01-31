@@ -7,13 +7,31 @@ export async function searchOERCommons(query, limit = 5) {
     if (!res.ok) throw new Error("OER Commons search failed");
 
     const data = await res.json();
-    return (data.data || []).map(item => ({
-      title: item.title || "Untitled",
-      link: item.url || "",
-      snippet: item.description ? item.description.replace(/<\/?[^>]+(>|$)/g, "") : "",
-      source: "oercommons",
-      type: item.type || "handout",
-    }));
+    const items = data.data || [];
+
+    return (items || []).map(item => {
+      // Clean snippet
+      const snippetRaw = item.description || "";
+      const snippet = snippetRaw.replace(/<\/?[^>]+(>|$)/g, "").slice(0, 300) + (snippetRaw.length > 300 ? "…" : "");
+
+      // Authors
+      const authors = item.authors ? (Array.isArray(item.authors) ? item.authors : [item.authors]) : [];
+
+      // Published date
+      const published = item.date_created || null;
+
+      return {
+        title: item.title || "Untitled",
+        link: item.url || "",
+        snippet,
+        source: "oercommons",
+        type: item.type || "handout",
+        category: "Others",
+        authors,
+        published
+      };
+    });
+
   } catch (err) {
     console.error("OER Commons Error:", err.message);
     return [];
