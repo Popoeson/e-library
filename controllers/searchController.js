@@ -2,71 +2,102 @@
 const express = require("express");
 const router = express.Router();
 
-const qwen = require("../services/qwenModel");
+/* ---------------- AI Layer (Groq) ---------------- */
+const groq = require("../services/groqModel");
+
+/* ---------------- Search Services ---------------- */
 const brave = require("../services/braveSearch");
 const serp = require("../services/serpstackModel");
 
 const googleBooks = require("../services/googleBooks");
 const openLibrary = require("../services/openLibrary");
 const internetArchive = require("../services/internetArchive");
-// const core = require("../services/coreModel"); // optional
 const crossref = require("../services/crossref");
 const arxiv = require("../services/arxiv");
 const oer = require("../services/oerCommons");
 
+/* =================================================
+   POST /api/search
+================================================= */
 router.post("/", async (req, res) => {
   try {
-    const { query, limit = 15, preferPdf = true } = req.body;
-    if (!query) return res.status(400).json({ error: "query is required" });
+    const {
+      query,
+      subject = "general",
+      limit = 15,
+      preferPdf = true
+    } = req.body;
 
-    // 1. Rewrite query using Qwen
-    let rewritten = query;
-    try {
-      const rewrittenQuery = await qwen.rewriteQuery(query);
-      if (rewrittenQuery) rewritten = rewrittenQuery;
-    } catch (err) {
-      console.warn("Qwen rewrite failed:", err.message);
+    if (!query) {
+      return res.status(400).json({ error: "query is required" });
     }
 
-    // 2. Optional PDF filter (applied to Brave)
-    const finalSearch = preferPdf ? `${rewritten} filetype:pdf` : rewritten;
+    /* =================================================
+       1️⃣ AI QUERY REWRITE (STRICT SUBJECT LOCK)
+    ================================================= */
+    let rewrittenQuery = query;
 
-    // 3. Fetch main web results
-    const serpResults = await serp.searchSerpstack(rewritten, limit);
-    const braveResults = await brave.searchWeb(finalSearch, { limit });
+    try {
+      rewrittenQuery = await groq.rewriteQuery({
+        query,
+        subject
+      });
+    } catch (err) {
+      console.warn("⚠️ Groq rewrite failed:", err.message);
+    }
 
-    // 4. Fetch educational sources
+    /* =================================================
+       2️⃣ Optional PDF bias (web only)
+    ================================================= */
+    const finalSearch = preferPdf
+      ? `${rewrittenQuery} filetype:pdf`
+      : rewrittenQuery;
+
+    /* =================================================
+       3️⃣ Fetch Results (fault-tolerant)
+    ================================================= */
+    const safe = async (fn, label) => {
+      try {
+        return await fn();
+      } catch (err) {
+        console.warn(`⚠️ ${label} failed`);
+        return [];
+      }
+    };
+
     const [
+      serpResults,
+      braveResults,
       googleBooksResults,
       openLibResults,
       iaResults,
-      // coreResults,
       crossrefResults,
       arxivResults,
       oerResults
     ] = await Promise.all([
-      googleBooks.searchGoogleBooks(rewritten, limit),
-      openLibrary.searchOpenLibrary(rewritten, limit),
-      internetArchive.searchInternetArchive(rewritten, limit),
-      // core.search(rewritten, limit),
-      crossref.searchCrossref(rewritten, limit),
-      arxiv.searchArxiv(rewritten, limit),
-      oer.searchOERCommons(rewritten, limit)
+      safe(() => serp.searchSerpstack(rewrittenQuery, limit), "serpstack"),
+      safe(() => brave.searchWeb(finalSearch, { limit }), "brave"),
+      safe(() => googleBooks.searchGoogleBooks(rewrittenQuery, limit), "googleBooks"),
+      safe(() => openLibrary.searchOpenLibrary(rewrittenQuery, limit), "openLibrary"),
+      safe(() => internetArchive.searchInternetArchive(rewrittenQuery, limit), "internetArchive"),
+      safe(() => crossref.searchCrossref(rewrittenQuery, limit), "crossref"),
+      safe(() => arxiv.searchArxiv(rewrittenQuery, limit), "arxiv"),
+      safe(() => oer.searchOERCommons(rewrittenQuery, limit), "oer")
     ]);
 
-    // 5. Merge all results while avoiding duplicates
+    /* =================================================
+       4️⃣ Merge + De-duplicate
+    ================================================= */
     const seen = new Set();
-    const clean = [];
+    const results = [];
 
-    const pushUnique = (items) => {
-      items?.forEach(item => {
-        const url = item.link?.toLowerCase() || item.id?.toLowerCase();
-        if (!url) return;
-        if (!seen.has(url)) {
-          seen.add(url);
-          clean.push(item);
-        }
-      });
+    const pushUnique = (items = []) => {
+      for (const item of items) {
+        const key = (item.link || item.id || "").toLowerCase();
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        results.push(item);
+      }
     };
 
     pushUnique(serpResults);
@@ -74,40 +105,52 @@ router.post("/", async (req, res) => {
     pushUnique(googleBooksResults);
     pushUnique(openLibResults);
     pushUnique(iaResults);
-    // pushUnique(coreResults);
     pushUnique(crossrefResults);
     pushUnique(arxivResults);
     pushUnique(oerResults);
 
-    // 6. Count results per source
-    const sourcesCount = {
-      serpstack: serpResults.length,
-      brave: braveResults.length,
-      googleBooks: googleBooksResults.length,
-      openLibrary: openLibResults.length,
-      internetArchive: iaResults.length,
-      // core: coreResults.length,
-      crossref: crossrefResults.length,
-      arxiv: arxivResults.length,
-      oer: oerResults.length
-    };
+    /* =================================================
+       5️⃣ AI SUMMARY (Homepage use)
+    ================================================= */
+    let summary = "";
+    try {
+      summary = await groq.summarizeTopic({
+        query: rewrittenQuery,
+        subject
+      });
+    } catch (err) {
+      console.warn("⚠️ Summary generation failed");
+    }
 
-    // 7. Send final output
+    /* =================================================
+       6️⃣ Response
+    ================================================= */
     return res.json({
       status: "success",
       originalQuery: query,
-      rewrittenQuery: rewritten,
+      rewrittenQuery,
+      subject,
       finalSearch,
-      resultsCount: clean.length,
-      sourcesCount,
-      results: clean
+      summary,
+      resultsCount: results.length,
+      sourcesCount: {
+        serpstack: serpResults.length,
+        brave: braveResults.length,
+        googleBooks: googleBooksResults.length,
+        openLibrary: openLibResults.length,
+        internetArchive: iaResults.length,
+        crossref: crossrefResults.length,
+        arxiv: arxivResults.length,
+        oer: oerResults.length
+      },
+      results
     });
 
   } catch (err) {
-    console.error("Search error:", err);
+    console.error("❌ Search controller error:", err);
     return res.status(500).json({
       status: "error",
-      message: "Server error",
+      message: "Search failed",
       details: err.message
     });
   }
