@@ -9,21 +9,21 @@ if (!GROQ_API_KEY) {
 const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 const MODEL = "llama-3.1-8b-instruct";
 
-/* ------------------------------
+/* =========================================================
    Shared request helper
---------------------------------*/
+========================================================= */
 async function groqRequest(messages, options = {}) {
   const response = await fetch(GROQ_ENDPOINT, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${GROQ_API_KEY}`,
+      Authorization: `Bearer ${GROQ_API_KEY}`,
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
       model: MODEL,
       messages,
       temperature: options.temperature ?? 0,
-      max_tokens: options.max_tokens ?? 180,
+      max_tokens: options.max_tokens ?? 300,
       top_p: options.top_p ?? 1,
       stream: false
     })
@@ -41,7 +41,6 @@ async function groqRequest(messages, options = {}) {
 /* =========================================================
    1️⃣ Query Rewriting (STRICT subject enforcement)
 ========================================================= */
-
 async function rewriteQuery({ query, subject }) {
   const messages = [
     {
@@ -77,7 +76,6 @@ Rewrite the query to strictly match the subject.
 /* =========================================================
    2️⃣ Topic Summary (Homepage AI summary)
 ========================================================= */
-
 async function summarizeTopic({ query, subject }) {
   const messages = [
     {
@@ -111,49 +109,83 @@ Provide a concise academic summary.
 }
 
 /* =========================================================
-   3️⃣ (Optional) Relevance Check for Search Results
-   Light AI gate — use ONLY if needed
+   3️⃣ AI Search Relevance Filtering (BATCH MODE)
+   ⭐ THIS IS THE IMPORTANT PART ⭐
 ========================================================= */
+async function filterResultsByRelevance({ query, subject, results }) {
+  if (!results || results.length === 0) return [];
 
-async function isRelevantResult({ title, snippet, subject }) {
+  // Reduce payload size
+  const compactResults = results.map((r, i) => ({
+    id: i,
+    title: r.title,
+    snippet: r.snippet?.slice(0, 200) || ""
+  }));
+
   const messages = [
     {
       role: "system",
       content: `
-You are a relevance checker.
+You are an academic relevance filtering engine.
+
+TASK:
+- Determine which results are STRICTLY relevant to the subject.
+- Reject anything loosely related, general web content, blogs, news, or opinions.
+- Accept ONLY academic, educational, research, or instructional material.
 
 STRICT RULES:
-- Answer ONLY "YES" or "NO".
-- Determine if the result belongs strictly to the subject.
+- Be extremely strict.
+- If unsure, reject.
+- Do NOT explain.
+- Return ONLY a JSON array of accepted IDs.
+
+Example output:
+[0, 2, 5]
 `
     },
     {
       role: "user",
       content: `
 Subject: "${subject}"
+Search Query: "${query}"
 
-Title: "${title}"
-Snippet: "${snippet}"
+Results:
+${JSON.stringify(compactResults, null, 2)}
 
-Is this result strictly relevant?
+Return ONLY the array of IDs that are strictly relevant.
 `
     }
   ];
 
-  const result = await groqRequest(messages, {
-    temperature: 0,
-    max_tokens: 3
-  });
+  let raw;
+  try {
+    raw = await groqRequest(messages, {
+      temperature: 0,
+      max_tokens: 200
+    });
+  } catch (err) {
+    console.warn("⚠️ Groq relevance filter failed. Returning unfiltered results.");
+    return results;
+  }
 
-  return result === "YES";
+  let acceptedIds = [];
+  try {
+    acceptedIds = JSON.parse(raw);
+  } catch {
+    console.warn("⚠️ Invalid Groq relevance output:", raw);
+    return results;
+  }
+
+  return acceptedIds
+    .map(id => results[id])
+    .filter(Boolean);
 }
 
 /* =========================================================
    Exports
 ========================================================= */
-
 module.exports = {
   rewriteQuery,
   summarizeTopic,
-  isRelevantResult
+  filterResultsByRelevance
 };
