@@ -71,12 +71,11 @@ TASK:
 }
 
 /* =========================================================
-   4️⃣ AI Search Relevance Scoring (loose, keeps all results)
+   4️⃣ AI Search Relevance Scoring (robust JSON-safe)
 ========================================================= */
 export async function rankResultsByRelevance({ query, subject, results }) {
   if (!results?.length) return [];
 
-  // Prepare a compact version for the AI
   const compactResults = results.map((r, i) => ({
     id: i,
     title: r.title,
@@ -89,12 +88,18 @@ export async function rankResultsByRelevance({ query, subject, results }) {
       content: `
 You are an academic relevance scoring engine.
 
-TASK:
-- Score each result 0–100 based on how relevant it is to the query and subject.
-- 100 = highly relevant academic material.
-- 0 = irrelevant.
-- Keep all results; do NOT reject any.
-- Return ONLY a JSON array of objects with {id, score}.
+RULES:
+- Score EVERY result from 0 to 100
+- 100 = highly relevant academic material
+- 0 = weak or irrelevant
+- DO NOT reject results
+- OUTPUT JSON ONLY (no markdown, no commentary)
+
+Return format:
+[
+  { "id": 0, "score": 85 },
+  { "id": 1, "score": 62 }
+]
 `
     },
     {
@@ -104,16 +109,29 @@ TASK:
   ];
 
   try {
-    const raw = await groqChat(messages, { max_tokens: 300 });
-    const scoredArray = JSON.parse(raw);
+    let raw = await groqChat(messages, { max_tokens: 300 });
 
-    // Merge scores back into original results
+    // 🧹 STRIP MARKDOWN CODE FENCES (```json ... ```)
+    raw = raw
+      .replace(/```json/gi, "")
+      .replace(/```/g, "")
+      .trim();
+
+    const scored = JSON.parse(raw);
+
     return results.map((r, i) => {
-      const match = scoredArray.find(s => s.id === i);
-      return { ...r, score: match?.score ?? 0 };
+      const found = scored.find(s => s.id === i);
+      return {
+        ...r,
+        score: typeof found?.score === "number" ? found.score : 0
+      };
     });
+
   } catch (err) {
-    console.warn("⚠️ Groq scoring failed, returning unscored results.", err.message);
+    console.warn(
+      "⚠️ Groq scoring failed, returning unscored results.",
+      err.message
+    );
     return results.map(r => ({ ...r, score: 0 }));
   }
 }
