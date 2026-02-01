@@ -21,19 +21,12 @@ const oer = require("../services/oerCommons");
 ================================================= */
 router.post("/", async (req, res) => {
   try {
-    const {
-      query,
-      subject = "general",
-      limit = 15,
-      preferPdf = true
-    } = req.body;
+    const { query, subject = "general", limit = 15, preferPdf = true } = req.body;
 
-    if (!query) {
-      return res.status(400).json({ error: "query is required" });
-    }
+    if (!query) return res.status(400).json({ error: "query is required" });
 
     /* =================================================
-       1️⃣ AI QUERY REWRITE (STRICT SUBJECT LOCK)
+       1️⃣ AI QUERY REWRITE
     ================================================= */
     let rewrittenQuery = query;
     try {
@@ -45,9 +38,7 @@ router.post("/", async (req, res) => {
     /* =================================================
        2️⃣ Optional PDF bias (web only)
     ================================================= */
-    const finalSearch = preferPdf
-      ? `${rewrittenQuery} filetype:pdf`
-      : rewrittenQuery;
+    const finalSearch = preferPdf ? `${rewrittenQuery} filetype:pdf` : rewrittenQuery;
 
     /* =================================================
        3️⃣ Fetch Results (fault-tolerant)
@@ -103,24 +94,26 @@ router.post("/", async (req, res) => {
     pushUnique(iaResults, "Archives");
     pushUnique(crossrefResults, "Journals");
     pushUnique(arxivResults, "Journals");
-    pushUnique(oerResults, "Journals");
+    pushUnique(oerResults, "Others"); // changed to Others instead of Journals
 
     /* =================================================
-       5️⃣ AI RELEVANCE FILTERING (STRICT SUBJECT MATCH)
+       5️⃣ AI RELEVANCE SCORING (loose, no filtering)
+       🔥 Adds a score field to each result
     ================================================= */
-    let filteredResults = mergedResults;
     try {
-      filteredResults = await groq.filterResultsByRelevance({
+      const scoredResults = await groq.rankResultsByRelevance({
         query: rewrittenQuery,
         subject,
         results: mergedResults
       });
+      // sort by descending score
+      mergedResults.sort((a, b) => (b.score || 0) - (a.score || 0));
     } catch (err) {
-      console.warn("⚠️ AI relevance filtering failed — returning raw results");
+      console.warn("⚠️ AI ranking failed — keeping original order");
     }
 
     /* =================================================
-       6️⃣ AI SUMMARY (Homepage use)
+       6️⃣ AI SUMMARY (Homepage)
     ================================================= */
     let summary = "";
     try {
@@ -135,7 +128,7 @@ router.post("/", async (req, res) => {
     const categories = ["Web", "Books", "Journals", "Archives", "Others"];
     const resultsByCategory = categories.map(cat => ({
       category: cat,
-      results: filteredResults.filter(r => r.category === cat)
+      results: mergedResults.filter(r => r.category === cat)
     }));
 
     return res.json({
@@ -145,7 +138,7 @@ router.post("/", async (req, res) => {
       subject,
       finalSearch,
       summary,
-      resultsCount: filteredResults.length,
+      resultsCount: mergedResults.length,
       sourcesCount: {
         serpstack: serpResults.length,
         brave: braveResults.length,
