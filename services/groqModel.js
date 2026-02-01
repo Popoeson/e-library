@@ -2,7 +2,6 @@
 import { Groq } from 'groq-sdk';
 
 const groq = new Groq();
-
 const MODEL = "llama-3.3-70b-versatile";
 
 /* =========================================================
@@ -17,7 +16,6 @@ async function groqChat(messages, options = {}) {
     top_p: options.top_p ?? 1
   });
 
-  // Grab assistant's last content
   const lastMessage = completion.choices?.[0]?.message?.content;
   return lastMessage?.trim() || "";
 }
@@ -32,16 +30,15 @@ export async function rewriteQuery({ query, subject }) {
       content: `
 You are an academic search assistant.
 
-STRICT RULES:
-- Rewrite the query to target ONLY the specified subject.
+TASK:
+- Rewrite the query to focus on the specified subject.
 - Use academic and educational keywords.
-- Do NOT introduce adjacent or loosely related topics.
-- Output ONE rewritten query only.
+- Output ONE concise rewritten query.
 `
     },
     {
       role: "user",
-      content: `Original query: "${query}"\nSubject: "${subject}"\nRewrite the query strictly.`
+      content: `Original query: "${query}"\nSubject: "${subject}"\nRewrite the query.`
     }
   ];
 
@@ -56,13 +53,12 @@ export async function summarizeTopic({ query, subject }) {
     {
       role: "system",
       content: `
-You are an academic tutor generating short summaries for students.
+You are an academic tutor generating concise summaries for students.
 
-STRICT RULES:
-- Stay strictly within the given subject.
-- Do NOT introduce unrelated topics.
-- Use clear academic language suitable for students.
-- Be concise (2–4 sentences).
+TASK:
+- Stay within the given subject.
+- Use clear academic language.
+- Keep it short (2–4 sentences).
 `
     },
     {
@@ -75,11 +71,12 @@ STRICT RULES:
 }
 
 /* =========================================================
-   4️⃣ AI Search Relevance Filtering
+   4️⃣ AI Search Relevance Scoring (loose, keeps all results)
 ========================================================= */
-export async function filterResultsByRelevance({ query, subject, results }) {
+export async function rankResultsByRelevance({ query, subject, results }) {
   if (!results?.length) return [];
 
+  // Prepare a compact version for the AI
   const compactResults = results.map((r, i) => ({
     id: i,
     title: r.title,
@@ -90,26 +87,33 @@ export async function filterResultsByRelevance({ query, subject, results }) {
     {
       role: "system",
       content: `
-You are an academic relevance filtering engine.
+You are an academic relevance scoring engine.
 
 TASK:
-- Determine which results are STRICTLY relevant to the subject.
-- Accept only academic, educational, research, or instructional material.
-- Reject general web content, blogs, news, or opinions.
-- Return ONLY a JSON array of accepted IDs.
+- Score each result 0–100 based on how relevant it is to the query and subject.
+- 100 = highly relevant academic material.
+- 0 = irrelevant.
+- Keep all results; do NOT reject any.
+- Return ONLY a JSON array of objects with {id, score}.
 `
     },
     {
       role: "user",
-      content: `Subject: "${subject}"\nQuery: "${query}"\nResults:\n${JSON.stringify(compactResults, null, 2)}\nReturn ONLY array of IDs.`
+      content: `Subject: "${subject}"\nQuery: "${query}"\nResults:\n${JSON.stringify(compactResults, null, 2)}`
     }
   ];
 
   try {
-    const raw = await groqChat(messages, { max_tokens: 200 });
-    return JSON.parse(raw).map(id => results[id]).filter(Boolean);
+    const raw = await groqChat(messages, { max_tokens: 300 });
+    const scoredArray = JSON.parse(raw);
+
+    // Merge scores back into original results
+    return results.map((r, i) => {
+      const match = scoredArray.find(s => s.id === i);
+      return { ...r, score: match?.score ?? 0 };
+    });
   } catch (err) {
-    console.warn("⚠️ Groq relevance filter failed, returning unfiltered results.", err.message);
-    return results;
+    console.warn("⚠️ Groq scoring failed, returning unscored results.", err.message);
+    return results.map(r => ({ ...r, score: 0 }));
   }
 }
