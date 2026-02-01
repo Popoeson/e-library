@@ -21,12 +21,14 @@ const oer = require("../services/oerCommons");
 ================================================= */
 router.post("/", async (req, res) => {
   try {
-    const { query, subject = "general", limit = 15, preferPdf = true } = req.body;
+    const { query, subject = "general", limit = 15, preferPdf = false } = req.body;
 
-    if (!query) return res.status(400).json({ error: "query is required" });
+    if (!query) {
+      return res.status(400).json({ error: "query is required" });
+    }
 
     /* =================================================
-       1️⃣ AI QUERY REWRITE
+       1️⃣ AI QUERY REWRITE (NON-BLOCKING)
     ================================================= */
     let rewrittenQuery = query;
     try {
@@ -36,9 +38,10 @@ router.post("/", async (req, res) => {
     }
 
     /* =================================================
-       2️⃣ Optional PDF bias (web only)
+       2️⃣ SEARCH QUERY (NO HARD PDF BIAS)
+       🔓 Discovery-first approach
     ================================================= */
-    const finalSearch = preferPdf ? `${rewrittenQuery} filetype:pdf` : rewrittenQuery;
+    const webQuery = rewrittenQuery; // no filetype forcing
 
     /* =================================================
        3️⃣ Fetch Results (fault-tolerant)
@@ -62,8 +65,8 @@ router.post("/", async (req, res) => {
       arxivResults,
       oerResults
     ] = await Promise.all([
-      safe(() => serp.searchSerpstack(rewrittenQuery, limit), "serpstack"),
-      safe(() => brave.searchWeb(finalSearch, { limit }), "brave"),
+      safe(() => serp.searchSerpstack(webQuery, limit), "serpstack"),
+      safe(() => brave.searchWeb(webQuery, { limit }), "brave"),
       safe(() => googleBooks.searchGoogleBooks(rewrittenQuery, limit), "googleBooks"),
       safe(() => openLibrary.searchOpenLibrary(rewrittenQuery, limit), "openLibrary"),
       safe(() => internetArchive.searchInternetArchive(rewrittenQuery, limit), "internetArchive"),
@@ -74,16 +77,20 @@ router.post("/", async (req, res) => {
 
     /* =================================================
        4️⃣ Merge + De-duplicate + Category tagging
+       🔓 No exclusion, no score filtering
     ================================================= */
     const seen = new Set();
-    const mergedResults = [];
+    let mergedResults = [];
 
     const pushUnique = (items = [], category = "Others") => {
       for (const item of items) {
         const key = (item.link || item.id || "").toLowerCase();
         if (!key || seen.has(key)) continue;
         seen.add(key);
-        mergedResults.push({ ...item, category });
+        mergedResults.push({
+          ...item,
+          category
+        });
       }
     };
 
@@ -94,26 +101,32 @@ router.post("/", async (req, res) => {
     pushUnique(iaResults, "Archives");
     pushUnique(crossrefResults, "Journals");
     pushUnique(arxivResults, "Journals");
-    pushUnique(oerResults, "Others"); // changed to Others instead of Journals
+    pushUnique(oerResults, "Others");
 
     /* =================================================
-       5️⃣ AI RELEVANCE SCORING (loose, no filtering)
-       🔥 Adds a score field to each result
+       5️⃣ Shuffle BEFORE AI ranking
+       (prevents service-order bias)
+    ================================================= */
+    mergedResults = mergedResults.sort(() => Math.random() - 0.5);
+
+    /* =================================================
+       6️⃣ AI RELEVANCE SCORING (RANK ONLY)
+       ❗ No filtering, no exclusions
     ================================================= */
     try {
-      const scoredResults = await groq.rankResultsByRelevance({
+      await groq.rankResultsByRelevance({
         query: rewrittenQuery,
         subject,
         results: mergedResults
       });
-      // sort by descending score
+
       mergedResults.sort((a, b) => (b.score || 0) - (a.score || 0));
     } catch (err) {
-      console.warn("⚠️ AI ranking failed — keeping original order");
+      console.warn("⚠️ AI ranking failed — keeping discovery order");
     }
 
     /* =================================================
-       6️⃣ AI SUMMARY (Homepage)
+       7️⃣ AI SUMMARY (Homepage-safe)
     ================================================= */
     let summary = "";
     try {
@@ -123,7 +136,7 @@ router.post("/", async (req, res) => {
     }
 
     /* =================================================
-       7️⃣ Response with categories (for breadcrumbs)
+       8️⃣ Group by Category (Frontend-friendly)
     ================================================= */
     const categories = ["Web", "Books", "Journals", "Archives", "Others"];
     const resultsByCategory = categories.map(cat => ({
@@ -136,7 +149,6 @@ router.post("/", async (req, res) => {
       originalQuery: query,
       rewrittenQuery,
       subject,
-      finalSearch,
       summary,
       resultsCount: mergedResults.length,
       sourcesCount: {
