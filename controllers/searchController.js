@@ -21,30 +21,31 @@ const oer = require("../services/oerCommons");
 ================================================= */
 router.post("/", async (req, res) => {
   try {
-    const { query, subject = "general", limit = 15, preferPdf = false } = req.body;
+    const { query, subject = "general", limit = 15, preferPdf = true } = req.body;
 
     if (!query) {
       return res.status(400).json({ error: "query is required" });
     }
 
     /* =================================================
-       1️⃣ AI QUERY REWRITE (NON-BLOCKING)
+       1️⃣ AI QUERY REWRITE (JOURNALS ONLY)
     ================================================= */
     let rewrittenQuery = query;
     try {
       rewrittenQuery = await groq.rewriteQuery({ query, subject });
     } catch (err) {
-      console.warn("⚠️ Groq rewrite failed:", err.message);
+      console.warn("⚠️ Groq rewrite failed, using original query");
     }
 
     /* =================================================
-       2️⃣ SEARCH QUERY (NO HARD PDF BIAS)
-       🔓 Discovery-first approach
+       2️⃣ Web query (optional PDF bias)
     ================================================= */
-    const webQuery = rewrittenQuery; // no filetype forcing
+    const webQuery = preferPdf
+      ? `${query} filetype:pdf`
+      : query;
 
     /* =================================================
-       3️⃣ Fetch Results (fault-tolerant)
+       3️⃣ Safe wrapper
     ================================================= */
     const safe = async (fn, label) => {
       try {
@@ -55,88 +56,98 @@ router.post("/", async (req, res) => {
       }
     };
 
+    /* =================================================
+       4️⃣ Fetch results (STRATIFIED QUERIES)
+    ================================================= */
     const [
       serpResults,
       braveResults,
+
       googleBooksResults,
       openLibResults,
+
       iaResults,
+
       crossrefResults,
       arxivResults,
+
       oerResults
     ] = await Promise.all([
+      // 🌐 WEB
       safe(() => serp.searchSerpstack(webQuery, limit), "serpstack"),
       safe(() => brave.searchWeb(webQuery, { limit }), "brave"),
-      safe(() => googleBooks.searchGoogleBooks(rewrittenQuery, limit), "googleBooks"),
-      safe(() => openLibrary.searchOpenLibrary(rewrittenQuery, limit), "openLibrary"),
-      safe(() => internetArchive.searchInternetArchive(rewrittenQuery, limit), "internetArchive"),
-      safe(() => crossref.searchCrossref(rewrittenQuery, limit), "crossref"),
+
+      // 📚 BOOKS
+      safe(() => googleBooks.searchGoogleBooks(query, limit), "googleBooks"),
+      safe(() => openLibrary.searchOpenLibrary(query, limit), "openLibrary"),
+
+      // 🏛 ARCHIVES
+      safe(() => internetArchive.searchInternetArchive(query, limit), "internetArchive"),
+
+      // 📑 JOURNALS
+      safe(() => crossref.searchCrossref(rewrittenQuery, limit * 2), "crossref"),
       safe(() => arxiv.searchArxiv(rewrittenQuery, limit), "arxiv"),
-      safe(() => oer.searchOERCommons(rewrittenQuery, limit), "oer")
+
+      // 🎓 OER
+      safe(() => oer.searchOERCommons(query, limit), "oer")
     ]);
 
     /* =================================================
-       4️⃣ Merge + De-duplicate + Category tagging
-       🔓 No exclusion, no score filtering
+       5️⃣ Merge + De-duplicate + Category tagging
     ================================================= */
     const seen = new Set();
-    let mergedResults = [];
+    const mergedResults = [];
 
-    const pushUnique = (items = [], category = "Others") => {
+    const pushUnique = (items = [], category) => {
       for (const item of items) {
-        const key = (item.link || item.id || "").toLowerCase();
+        const key = (item.link || item.id || item.title || "").toLowerCase();
         if (!key || seen.has(key)) continue;
         seen.add(key);
-        mergedResults.push({
-          ...item,
-          category
-        });
+        mergedResults.push({ ...item, category });
       }
     };
 
     pushUnique(serpResults, "Web");
     pushUnique(braveResults, "Web");
+
     pushUnique(googleBooksResults, "Books");
     pushUnique(openLibResults, "Books");
+
     pushUnique(iaResults, "Archives");
+
     pushUnique(crossrefResults, "Journals");
     pushUnique(arxivResults, "Journals");
+
     pushUnique(oerResults, "Others");
 
     /* =================================================
-       5️⃣ Shuffle BEFORE AI ranking
-       (prevents service-order bias)
-    ================================================= */
-    mergedResults = mergedResults.sort(() => Math.random() - 0.5);
-
-    /* =================================================
-       6️⃣ AI RELEVANCE SCORING (RANK ONLY)
-       ❗ No filtering, no exclusions
+       6️⃣ AI RELEVANCE RANKING (NO FILTERING)
     ================================================= */
     try {
-      await groq.rankResultsByRelevance({
-        query: rewrittenQuery,
+      const ranked = await groq.rankResultsByRelevance({
+        query,
         subject,
         results: mergedResults
       });
 
-      mergedResults.sort((a, b) => (b.score || 0) - (a.score || 0));
+      mergedResults.length = 0;
+      mergedResults.push(...ranked.sort((a, b) => (b.score || 0) - (a.score || 0)));
     } catch (err) {
-      console.warn("⚠️ AI ranking failed — keeping discovery order");
+      console.warn("⚠️ AI ranking failed — keeping original order");
     }
 
     /* =================================================
-       7️⃣ AI SUMMARY (Homepage-safe)
+       7️⃣ AI SUMMARY
     ================================================= */
     let summary = "";
     try {
-      summary = await groq.summarizeTopic({ query: rewrittenQuery, subject });
+      summary = await groq.summarizeTopic({ query, subject });
     } catch (err) {
-      console.warn("⚠️ Summary generation failed:", err.message || err);
+      console.warn("⚠️ Summary generation failed");
     }
 
     /* =================================================
-       8️⃣ Group by Category (Frontend-friendly)
+       8️⃣ Group for breadcrumbs
     ================================================= */
     const categories = ["Web", "Books", "Journals", "Archives", "Others"];
     const resultsByCategory = categories.map(cat => ({
