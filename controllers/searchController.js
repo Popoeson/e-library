@@ -8,6 +8,7 @@ const groq = require("../services/groqModel");
 /* ---------------- Search Services ---------------- */
 const brave = require("../services/braveSearch");
 const serp = require("../services/serpstackModel");
+const serper = require("../services/serperSearch"); // ✅ NEW
 
 const googleBooks = require("../services/googleBooks");
 const openLibrary = require("../services/openLibrary");
@@ -33,7 +34,7 @@ router.post("/", async (req, res) => {
     let rewrittenQuery = query;
     try {
       rewrittenQuery = await groq.rewriteQuery({ query, subject });
-    } catch (err) {
+    } catch {
       console.warn("⚠️ Groq rewrite failed, using original query");
     }
 
@@ -45,7 +46,7 @@ router.post("/", async (req, res) => {
       : query;
 
     /* =================================================
-       3️⃣ Safe wrapper
+       3️⃣ Safe wrapper (isolated failure)
     ================================================= */
     const safe = async (fn, label) => {
       try {
@@ -57,11 +58,12 @@ router.post("/", async (req, res) => {
     };
 
     /* =================================================
-       4️⃣ Fetch results (STRATIFIED QUERIES)
+       4️⃣ Fetch results (PARALLEL, MULTI-SOURCE)
     ================================================= */
     const [
       serpResults,
       braveResults,
+      serperResults,
 
       googleBooksResults,
       openLibResults,
@@ -76,6 +78,7 @@ router.post("/", async (req, res) => {
       // 🌐 WEB
       safe(() => serp.searchSerpstack(webQuery, limit), "serpstack"),
       safe(() => brave.searchWeb(webQuery, { limit }), "brave"),
+      safe(() => serper.searchSerper(webQuery, limit), "serper"),
 
       // 📚 BOOKS
       safe(() => googleBooks.searchGoogleBooks(query, limit), "googleBooks"),
@@ -100,24 +103,37 @@ router.post("/", async (req, res) => {
 
     const pushUnique = (items = [], category) => {
       for (const item of items) {
-        const key = (item.link || item.id || item.title || "").toLowerCase();
+        const key = (item.link || item.id || item.title || "")
+          .toLowerCase()
+          .trim();
+
         if (!key || seen.has(key)) continue;
         seen.add(key);
-        mergedResults.push({ ...item, category });
+
+        mergedResults.push({
+          ...item,
+          category
+        });
       }
     };
 
+    // 🌐 WEB
     pushUnique(serpResults, "Web");
     pushUnique(braveResults, "Web");
+    pushUnique(serperResults, "Web");
 
+    // 📚 BOOKS
     pushUnique(googleBooksResults, "Books");
     pushUnique(openLibResults, "Books");
 
+    // 🏛 ARCHIVES
     pushUnique(iaResults, "Archives");
 
+    // 📑 JOURNALS
     pushUnique(crossrefResults, "Journals");
     pushUnique(arxivResults, "Journals");
 
+    // 🎓 OTHERS
     pushUnique(oerResults, "Others");
 
     /* =================================================
@@ -131,8 +147,10 @@ router.post("/", async (req, res) => {
       });
 
       mergedResults.length = 0;
-      mergedResults.push(...ranked.sort((a, b) => (b.score || 0) - (a.score || 0)));
-    } catch (err) {
+      mergedResults.push(
+        ...ranked.sort((a, b) => (b.score || 0) - (a.score || 0))
+      );
+    } catch {
       console.warn("⚠️ AI ranking failed — keeping original order");
     }
 
@@ -142,12 +160,12 @@ router.post("/", async (req, res) => {
     let summary = "";
     try {
       summary = await groq.summarizeTopic({ query, subject });
-    } catch (err) {
+    } catch {
       console.warn("⚠️ Summary generation failed");
     }
 
     /* =================================================
-       8️⃣ Group for breadcrumbs
+       8️⃣ Group for frontend breadcrumbs
     ================================================= */
     const categories = ["Web", "Books", "Journals", "Archives", "Others"];
     const resultsByCategory = categories.map(cat => ({
@@ -165,6 +183,7 @@ router.post("/", async (req, res) => {
       sourcesCount: {
         serpstack: serpResults.length,
         brave: braveResults.length,
+        serper: serperResults.length,
         googleBooks: googleBooksResults.length,
         openLibrary: openLibResults.length,
         internetArchive: iaResults.length,
