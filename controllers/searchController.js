@@ -8,7 +8,7 @@ const groq = require("../services/groqModel");
 /* ---------------- Search Services ---------------- */
 const brave = require("../services/braveSearch");
 const serp = require("../services/serpstackModel");
-const serper = require("../services/serperSearch"); // ✅ NEW
+const serperSearch = require("../services/serperSearch"); // ✅ FUNCTION import
 
 const googleBooks = require("../services/googleBooks");
 const openLibrary = require("../services/openLibrary");
@@ -29,7 +29,7 @@ router.post("/", async (req, res) => {
     }
 
     /* =================================================
-       1️⃣ AI QUERY REWRITE (JOURNALS ONLY)
+       1️⃣ AI QUERY REWRITE (journals bias only)
     ================================================= */
     let rewrittenQuery = query;
     try {
@@ -58,7 +58,7 @@ router.post("/", async (req, res) => {
     };
 
     /* =================================================
-       4️⃣ Fetch results (PARALLEL, MULTI-SOURCE)
+       4️⃣ Fetch results (parallel, multi-source)
     ================================================= */
     const [
       serpResults,
@@ -75,10 +75,10 @@ router.post("/", async (req, res) => {
 
       oerResults
     ] = await Promise.all([
-      // 🌐 WEB
+      // 🌐 WEB (MULTI ENGINE)
       safe(() => serp.searchSerpstack(webQuery, limit), "serpstack"),
       safe(() => brave.searchWeb(webQuery, { limit }), "brave"),
-      safe(() => serper.searchSerper(webQuery, limit), "serper"),
+      safe(() => serperSearch(webQuery, limit), "serper"), // ✅ FIXED
 
       // 📚 BOOKS
       safe(() => googleBooks.searchGoogleBooks(query, limit), "googleBooks"),
