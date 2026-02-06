@@ -22,7 +22,7 @@ const oer = require("../services/oerCommons");
 ================================================= */
 router.post("/", async (req, res) => {
   try {
-    const { query, subject = "general", limit = 15, preferPdf = true } = req.body;
+    const { query, subject = "general", limit = 15, preferPdf = false } = req.body;
 
     if (!query) {
       return res.status(400).json({ error: "query is required" });
@@ -41,9 +41,7 @@ router.post("/", async (req, res) => {
     /* =================================================
        2️⃣ Web query (optional PDF bias)
     ================================================= */
-    const webQuery = preferPdf
-      ? `${query} filetype:pdf`
-      : query;
+    const webQuery = preferPdf ? `${query} filetype:pdf` : query;
 
     /* =================================================
        3️⃣ Safe wrapper (isolated failure)
@@ -75,10 +73,10 @@ router.post("/", async (req, res) => {
 
       oerResults
     ] = await Promise.all([
-      // 🌐 WEB (MULTI ENGINE)
-      safe(() => serp.searchSerpstack(webQuery, limit), "serpstack"),
-      safe(() => brave.searchWeb(webQuery, { limit }), "brave"),
-      safe(() => serperSearch(webQuery, limit), "serper"), // ✅ FIXED
+      // 🌐 WEB (multi-engine)
+      safe(() => serp.searchSerpstack(webQuery, limit * 2), "serpstack"),
+      safe(() => brave.searchWeb(webQuery, { limit: limit * 2 }), "brave"),
+      safe(() => serperSearch(webQuery, limit * 2), "serper"),
 
       // 📚 BOOKS
       safe(() => googleBooks.searchGoogleBooks(query, limit), "googleBooks"),
@@ -103,10 +101,7 @@ router.post("/", async (req, res) => {
 
     const pushUnique = (items = [], category) => {
       for (const item of items) {
-        const key = (item.link || item.id || item.title || "")
-          .toLowerCase()
-          .trim();
-
+        const key = (item.link || item.id || item.title || "").toLowerCase().trim();
         if (!key || seen.has(key)) continue;
         seen.add(key);
 
@@ -137,7 +132,7 @@ router.post("/", async (req, res) => {
     pushUnique(oerResults, "Others");
 
     /* =================================================
-       6️⃣ AI RELEVANCE RANKING (NO FILTERING)
+       6️⃣ AI RELEVANCE RANKING (no filtering)
     ================================================= */
     try {
       const ranked = await groq.rankResultsByRelevance({
