@@ -296,8 +296,10 @@ function showAISummary(summary) {
 
   // convert simple bullet points to HTML
   summary = summary
-    .replace(/\n/g, "<br>")
-    .replace(/•/g, "• ");
+  .replace(/\n/g, "<br>")
+  .replace(/Introduction:/g, "<strong>Introduction</strong><br>")
+  .replace(/Key Concepts:/g, "<br><strong>Key Concepts</strong><br>")
+  .replace(/•/g, "<br>•");
 
   aiSummary.innerHTML = `
     <div class="ai-header">
