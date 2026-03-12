@@ -1,15 +1,14 @@
-// controllers/searchController.js
 const express = require("express");
 const router = express.Router();
 
-/* ---------------- AI Layer (Groq) ---------------- */
+/* ---------------- AI Layers ---------------- */
 const groq = require("../services/groqModel");
+const qwen = require("../services/qwenModel"); // ✅ Add Qwen for summaries
 
 /* ---------------- Search Services ---------------- */
 const brave = require("../services/braveSearch");
 const serp = require("../services/serpstackModel");
-const serperSearch = require("../services/serperSearch"); // ✅ FUNCTION import
-
+const serperSearch = require("../services/serperSearch");
 const googleBooks = require("../services/googleBooks");
 const openLibrary = require("../services/openLibrary");
 const internetArchive = require("../services/internetArchive");
@@ -29,7 +28,7 @@ router.post("/", async (req, res) => {
     }
 
     /* =================================================
-       1️⃣ AI QUERY REWRITE (journals bias only)
+       1️⃣ AI QUERY REWRITE (Groq)
     ================================================= */
     let rewrittenQuery = query;
     try {
@@ -56,40 +55,27 @@ router.post("/", async (req, res) => {
     };
 
     /* =================================================
-       4️⃣ Fetch results (parallel, multi-source)
+       4️⃣ Fetch results (parallel)
     ================================================= */
     const [
       serpResults,
       braveResults,
       serperResults,
-
       googleBooksResults,
       openLibResults,
-
       iaResults,
-
       crossrefResults,
       arxivResults,
-
       oerResults
     ] = await Promise.all([
-      // 🌐 WEB (multi-engine)
       safe(() => serp.searchSerpstack(webQuery, limit * 2), "serpstack"),
       safe(() => brave.searchWeb(webQuery, { limit: limit * 2 }), "brave"),
       safe(() => serperSearch(webQuery, limit * 2), "serper"),
-
-      // 📚 BOOKS
       safe(() => googleBooks.searchGoogleBooks(query, limit), "googleBooks"),
       safe(() => openLibrary.searchOpenLibrary(query, limit), "openLibrary"),
-
-      // 🏛 ARCHIVES
       safe(() => internetArchive.searchInternetArchive(query, limit), "internetArchive"),
-
-      // 📑 JOURNALS
       safe(() => crossref.searchCrossref(rewrittenQuery, limit * 2), "crossref"),
       safe(() => arxiv.searchArxiv(rewrittenQuery, limit), "arxiv"),
-
-      // 🎓 OER
       safe(() => oer.searchOERCommons(query, limit), "oer")
     ]);
 
@@ -98,41 +84,28 @@ router.post("/", async (req, res) => {
     ================================================= */
     const seen = new Set();
     const mergedResults = [];
-
     const pushUnique = (items = [], category) => {
       for (const item of items) {
         const key = (item.link || item.id || item.title || "").toLowerCase().trim();
         if (!key || seen.has(key)) continue;
         seen.add(key);
-
-        mergedResults.push({
-          ...item,
-          category
-        });
+        mergedResults.push({ ...item, category });
       }
     };
 
-    // 🌐 WEB
+    // Merge sources
     pushUnique(serpResults, "Web");
     pushUnique(braveResults, "Web");
     pushUnique(serperResults, "Web");
-
-    // 📚 BOOKS
     pushUnique(googleBooksResults, "Books");
     pushUnique(openLibResults, "Books");
-
-    // 🏛 ARCHIVES
     pushUnique(iaResults, "Archives");
-
-    // 📑 JOURNALS
     pushUnique(crossrefResults, "Journals");
     pushUnique(arxivResults, "Journals");
-
-    // 🎓 OTHERS
     pushUnique(oerResults, "Others");
 
     /* =================================================
-       6️⃣ AI RELEVANCE RANKING (no filtering)
+       6️⃣ AI RELEVANCE RANKING (Groq)
     ================================================= */
     try {
       const ranked = await groq.rankResultsByRelevance({
@@ -140,23 +113,21 @@ router.post("/", async (req, res) => {
         subject,
         results: mergedResults
       });
-
       mergedResults.length = 0;
-      mergedResults.push(
-        ...ranked.sort((a, b) => (b.score || 0) - (a.score || 0))
-      );
+      mergedResults.push(...ranked.sort((a, b) => (b.score || 0) - (a.score || 0)));
     } catch {
       console.warn("⚠️ AI ranking failed — keeping original order");
     }
 
     /* =================================================
-       7️⃣ AI SUMMARY
+       7️⃣ AI SUMMARY (Qwen)
+       Pure topic-based summary independent of search results
     ================================================= */
     let summary = "";
     try {
-      summary = await groq.summarizeTopic({ query, subject });
+      summary = await qwen.summarizeTopic(query); // ✅ Pass only topic
     } catch {
-      console.warn("⚠️ Summary generation failed");
+      console.warn("⚠️ Qwen summary generation failed");
     }
 
     /* =================================================
