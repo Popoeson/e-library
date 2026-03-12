@@ -62,27 +62,29 @@ async function summarizeTopic(topic) {
     const payload = {
       model: "qwen/qwen-2.5-7b-instruct",  // <- Updated model ID
       messages: [
-        {
-          role: "system",
-          content:
-            "You are an AI academic assistant. Explain the topic clearly for students.
+  {
+    role: "system",
+    content: `You are an AI academic assistant.
 
-Structure your response using short paragraphs and bullet points when appropriate.
+Explain the topic clearly for students.
 
-Format:
-- A short introductory explanation
-- 3–5 key points or concepts
-- Use simple academic language.
-"
-        },
-        {
-          role: "user",
-          content: topic
-        }
-      ],
-      max_tokens: 200,
-      temperature: 0.3
-    };
+Structure the response as:
+
+Introduction:
+A short explanation of the topic.
+
+Key Concepts:
+• 3–5 important concepts related to the topic.
+
+Use simple academic language suitable for students.`
+  },
+  {
+    role: "user",
+    content: topic
+  }
+],
+max_tokens: 300,
+temperature: 0.3
 
     const resp = await axios.post(OPENROUTER_API_URL, payload, {
       headers: {
