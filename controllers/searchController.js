@@ -3,7 +3,6 @@ const router = express.Router();
 
 /* ---------------- AI Layers ---------------- */
 const groq = require("../services/groqModel");
-const qwen = require("../services/qwenModel"); // ✅ Add Qwen for summaries
 
 /* ---------------- Search Services ---------------- */
 const brave = require("../services/braveSearch");
