@@ -102,6 +102,9 @@ safe(() => webscraping.searchWebscraping(webQuery, limit * 2), "webscraping"),
     pushUnique(serpResults, "Web");
     pushUnique(braveResults, "Web");
     pushUnique(serperResults, "Web");
+    pushUnique(apilayerResults, "Web");
+    pushUnique(zenscrapeResults, "Web");
+    pushUnique(webscrapingResults, "Web");
     pushUnique(googleBooksResults, "Books");
     pushUnique(openLibResults, "Books");
     pushUnique(iaResults, "Archives");
@@ -156,6 +159,9 @@ try {
         serpstack: serpResults.length,
         brave: braveResults.length,
         serper: serperResults.length,
+        apilayer: apilayerResults.length,
+        zenscrape: zenscrapeResults.length,
+        webscraping: webscrapingResults.length,
         googleBooks: googleBooksResults.length,
         openLibrary: openLibResults.length,
         internetArchive: iaResults.length,
