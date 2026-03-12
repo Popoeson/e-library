@@ -65,7 +65,15 @@ async function summarizeTopic(topic) {
         {
           role: "system",
           content:
-            "You are an AI academic assistant. Summarize the following topic in 2–3 concise sentences suitable for students."
+            "You are an AI academic assistant. Explain the topic clearly for students.
+
+Structure your response using short paragraphs and bullet points when appropriate.
+
+Format:
+- A short introductory explanation
+- 3–5 key points or concepts
+- Use simple academic language.
+"
         },
         {
           role: "user",
