@@ -1,7 +1,7 @@
 // services/qwenModel.js
 /**
- * Wrapper for Qwen via OpenRouter (or compatible API).
- * Supports query rewriting and topic summarization.
+ * Wrapper for Qwen via OpenRouter.
+ * Handles query rewriting + AI summaries.
  */
 
 const axios = require("axios");
@@ -13,17 +13,65 @@ if (!OPENROUTER_API_KEY || !OPENROUTER_API_URL) {
   console.warn("⚠️ Warning: OPENROUTER_API_KEY or OPENROUTER_API_URL is missing.");
 }
 
-/**
- * rewriteQuery
- * Rewrites user query into a concise, search-optimized form.
- */
+/* =================================================
+   QUERY REWRITE
+   Makes search queries better for academic sources
+================================================= */
+
+async function rewriteQuery(userQuery) {
+  userQuery = userQuery?.trim() || "general search";
+
+  if (!OPENROUTER_API_KEY || !OPENROUTER_API_URL) return userQuery;
+
+  try {
+    const payload = {
+      model: "qwen/qwen-2.5-7b-instruct",
+      messages: [
+        {
+          role: "system",
+          content:
+            "Rewrite the user query into a concise search query suitable for academic papers, textbooks, lecture notes and PDFs."
+        },
+        {
+          role: "user",
+          content: userQuery
+        }
+      ],
+      max_tokens: 80,
+      temperature: 0
+    };
+
+    const resp = await axios.post(OPENROUTER_API_URL, payload, {
+      headers: {
+        Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json"
+      }
+    });
+
+    const output = resp?.data;
+
+    return (
+      output?.choices?.[0]?.message?.content?.trim() ||
+      userQuery
+    );
+
+  } catch (err) {
+    console.warn("⚠️ Qwen rewrite error:", err?.message);
+    return userQuery;
+  }
+}
+
+
+/* =================================================
+   AI SUMMARY (based on search results)
+================================================= */
 
 async function summarizeTopic(topic, results = []) {
+
   if (!OPENROUTER_API_KEY || !OPENROUTER_API_URL) return "";
 
   try {
 
-    // Extract useful info from search results
     const context = results
       .slice(0, 5)
       .map(r => `${r.title || ""}: ${r.snippet || r.description || ""}`)
@@ -36,15 +84,15 @@ async function summarizeTopic(topic, results = []) {
           role: "system",
           content: `You are an academic assistant.
 
-Use the provided search results to explain the topic clearly.
+Explain the topic using the search results.
 
-Structure the response like this:
+Structure the response as:
 
 Introduction:
-Short explanation of the topic.
+Short explanation.
 
 Key Concepts:
-• 3–5 bullet points summarizing important ideas.
+• 3–5 important points.
 
 Use simple language suitable for students.`
         },
@@ -84,4 +132,7 @@ ${context}`
   }
 }
 
-module.exports = { rewriteQuery, summarizeTopic };
+module.exports = {
+  rewriteQuery,
+  summarizeTopic
+};
