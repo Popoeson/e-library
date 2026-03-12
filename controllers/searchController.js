@@ -119,16 +119,17 @@ router.post("/", async (req, res) => {
       console.warn("⚠️ AI ranking failed — keeping original order");
     }
 
-    /* =================================================
-       7️⃣ AI SUMMARY (Qwen)
-       Pure topic-based summary independent of search results
-    ================================================= */
-    let summary = "";
-    try {
-      summary = await qwen.summarizeTopic(query); // ✅ Pass only topic
-    } catch {
-      console.warn("⚠️ Qwen summary generation failed");
-    }
+/* =================================================
+   7️⃣ AI SUMMARY (using Groq only)
+================================================= */
+let summary = "";
+try {
+  // Groq summarizes the topic independently of the search results
+  summary = await groq.summarizeTopic({ query, subject });
+} catch (err) {
+  console.warn("⚠️ Groq summary generation failed:", err.message || err);
+  summary = "AI summary not available at the moment.";
+}
 
     /* =================================================
        8️⃣ Group for frontend breadcrumbs
