@@ -82,19 +82,26 @@ async function summarizeTopic(topic, results = []) {
       messages: [
         {
           role: "system",
-          content: `You are an academic assistant.
+          content: `You are an academic teaching assistant.
 
 Explain the topic using the search results.
 
-Structure the response as:
+You MUST format the response EXACTLY like this:
 
 Introduction:
-Short explanation.
+One short paragraph explaining the topic.
 
 Key Concepts:
-• 3–5 important points.
+• Concept 1
+• Concept 2
+• Concept 3
+• Concept 4
 
-Use simple language suitable for students.`
+Rules:
+- Always use bullet points (•)
+- Do NOT write everything in one paragraph
+- Use clear short explanations
+- Keep it suitable for students`
         },
         {
           role: "user",
