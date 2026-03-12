@@ -95,10 +95,50 @@
   .btn.primary { background: var(--accent); color:#fff; box-shadow:0 6px 18px rgba(37,99,235,0.2); }  
   .btn.primary:hover { background:#1d4ed8; }  
   .results-info { text-align:center; color: var(--muted); font-size:14px; margin:24px 0 8px 0; }  
-  .ai-summary { background: #e0f2fe; color: #0369a1; padding:16px 20px; border-radius: var(--radius); font-size:14px; margin-bottom:16px; line-height:1.5; cursor:pointer; position: relative; transition: max-height 0.3s ease; }  
-  .ai-summary.collapsed { max-height: 60px; overflow: hidden; }  
-  .ai-summary::after { content: '▼'; position: absolute; right:16px; bottom:16px; font-size:12px; }  
-  .ai-summary.expanded::after { content: '▲'; }  
+  
+.ai-summary{
+  background:#ffffff;
+  border-radius:14px;
+  padding:20px;
+  margin-bottom:18px;
+  border:1px solid #e5e7eb;
+  box-shadow:0 8px 24px rgba(0,0,0,0.06);
+  font-size:15px;
+  line-height:1.6;
+  cursor:pointer;
+  position:relative;
+  transition:max-height .3s ease;
+}
+
+.ai-header{
+  font-weight:600;
+  font-size:14px;
+  margin-bottom:10px;
+  color:#2563eb;
+}
+
+.ai-content{
+  color:#374151;
+}
+
+.ai-summary.collapsed{
+  max-height:90px;
+  overflow:hidden;
+}
+
+.ai-summary::after{
+  content:"Show more ▼";
+  position:absolute;
+  right:16px;
+  bottom:12px;
+  font-size:12px;
+  color:#6b7280;
+}
+
+.ai-summary.expanded::after{
+  content:"Show less ▲";
+}
+
   .breadcrumbs { display:flex; flex-wrap:wrap; gap:8px; font-size:13px; margin-bottom:16px; }  
   .breadcrumbs button { background:#f3f4f6; border:1px solid #d1d5db; border-radius:12px; padding:4px 12px; cursor:pointer; transition:0.2s; }  
   .breadcrumbs button.active, .breadcrumbs button:hover { background: var(--accent); color:#fff; border-color: var(--accent); }  
@@ -252,9 +292,25 @@ function loadLastState() {
 }
 
 function showAISummary(summary) {
-  aiSummary.textContent = summary || "No summary available.";
+  if (!summary) summary = "No summary available.";
+
+  // convert simple bullet points to HTML
+  summary = summary
+    .replace(/\n/g, "<br>")
+    .replace(/•/g, "• ");
+
+  aiSummary.innerHTML = `
+    <div class="ai-header">
+      🤖 AI Explanation
+    </div>
+    <div class="ai-content">
+      ${summary}
+    </div>
+  `;
+
   aiSummary.classList.remove("hidden");
   aiSummary.classList.add("collapsed");
+
   aiSummary.onclick = () => {
     aiSummary.classList.toggle("collapsed");
     aiSummary.classList.toggle("expanded");
