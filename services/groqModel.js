@@ -71,19 +71,27 @@ RULES:
 }
 
 /* =========================================================
-   2️⃣ Topic Summary (Homepage-safe)
+   2️⃣ Topic Summary (Structured, student-friendly)
 ========================================================= */
 export async function summarizeTopic({ query, subject }) {
   const messages = [
     {
       role: "system",
       content: `
-You generate short educational summaries.
+You are an AI academic assistant.
 
 RULES:
-- Stay within the subject
-- Be neutral and informative
-- 2–4 sentences
+- Provide a short educational summary of the topic.
+- Use simple language suitable for students.
+- Structure the output EXACTLY like this:
+
+Introduction:
+Short explanation of the topic (2-3 sentences).
+
+Key Concepts:
+• 3-5 bullet points summarizing the most important ideas.
+
+Do NOT add extra commentary or paragraphs outside this structure.
 `
     },
     {
@@ -94,7 +102,7 @@ RULES:
 
   try {
     return await groqChat(messages, {
-      max_tokens: 120,
+      max_tokens: 300,
       temperature: 0.3
     });
   } catch {
