@@ -1,5 +1,6 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
+const { URLSearchParams } = require("url");
 
 async function searchDuckDuckGo(query, limit = 10) {
   try {
@@ -23,15 +24,25 @@ async function searchDuckDuckGo(query, limit = 10) {
 
       if (!title || !link) return;
 
-      // Clean redirect links
+      // Fix protocol-relative links
       if (link.startsWith("//")) {
         link = "https:" + link;
+      }
+
+      // Extract real link if DuckDuckGo redirect
+      if (link.includes("/l/?uddg=")) {
+        try {
+          const params = new URLSearchParams(link.split("/l/?")[1]);
+          const realUrl = params.get("uddg");
+          if (realUrl) link = decodeURIComponent(realUrl);
+        } catch {}
       }
 
       results.push({
         title,
         link,
-        snippet
+        snippet,
+        source: "duckduckgo"
       });
     });
 
