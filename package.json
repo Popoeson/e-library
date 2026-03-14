@@ -18,6 +18,7 @@
     "passport-google-oauth20": "^2.0.0",
     "passport-apple": "^2.0.0",
      "express-session": "^1.17.3",
+     "cheerio": "^1.0.0-rc.12", 
     "mongoose": "^8.3.1",
      "groq-sdk": "^0.20.0"
   }
