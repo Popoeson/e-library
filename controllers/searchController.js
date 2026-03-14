@@ -9,15 +9,14 @@ const brave = require("../services/braveSearch");
 const serp = require("../services/serpstackModel");
 const serperSearch = require("../services/serperSearch");
 const apilayer = require("../services/apilayerSearch");
-const zenscrape = require("../services/zenscrapeSearch");
-const webscraping = require("../services/webscrapingSearch");
+const duckduckgo = require("../services/duckduckgoSearch");
+
 const googleBooks = require("../services/googleBooks");
 const openLibrary = require("../services/openLibrary");
 const internetArchive = require("../services/internetArchive");
 const crossref = require("../services/crossref");
 const arxiv = require("../services/arxiv");
 const oer = require("../services/oerCommons");
-
 /* =================================================
    POST /api/search
 ================================================= */
@@ -60,32 +59,30 @@ router.post("/", async (req, res) => {
        4️⃣ Fetch results (parallel)
     ================================================= */
     const [
-      serpResults,
-      braveResults,
-      serperResults,
-      apilayerResults,
-      zenscrapeResults, 
-      webscrapingResults,
-      googleBooksResults,
-      openLibResults,
-      iaResults,
-      crossrefResults,
-      arxivResults,
-      oerResults
-    ] = await Promise.all([
-      safe(() => serp.searchSerpstack(webQuery, limit * 2), "serpstack"),
-      safe(() => brave.searchWeb(webQuery, { limit: limit * 2 }), "brave"),
-      safe(() => serperSearch(webQuery, limit * 2), "serper"),
-      safe(() => apilayer.searchApilayer(webQuery, limit * 2), "apilayer"),
-safe(() => zenscrape.searchZenscrape(webQuery, limit * 2), "zenscrape"),
-safe(() => webscraping.searchWebscraping(webQuery, limit * 2), "webscraping"),
-      safe(() => googleBooks.searchGoogleBooks(query, limit), "googleBooks"),
-      safe(() => openLibrary.searchOpenLibrary(query, limit), "openLibrary"),
-      safe(() => internetArchive.searchInternetArchive(query, limit), "internetArchive"),
-      safe(() => crossref.searchCrossref(rewrittenQuery, limit * 2), "crossref"),
-      safe(() => arxiv.searchArxiv(rewrittenQuery, limit), "arxiv"),
-      safe(() => oer.searchOERCommons(query, limit), "oer")
-    ]);
+  serpResults,
+  braveResults,
+  serperResults,
+  apilayerResults,
+  duckduckgoResults,
+  googleBooksResults,
+  openLibResults,
+  iaResults,
+  crossrefResults,
+  arxivResults,
+  oerResults
+] = await Promise.all([
+  safe(() => serp.searchSerpstack(webQuery, limit * 2), "serpstack"),
+  safe(() => brave.searchWeb(webQuery, { limit: limit * 2 }), "brave"),
+  safe(() => serperSearch(webQuery, limit * 2), "serper"),
+  safe(() => apilayer.searchApilayer(webQuery, limit * 2), "apilayer"),
+  safe(() => duckduckgo.searchDuckDuckGo(webQuery, limit * 2), "duckduckgo"),
+  safe(() => googleBooks.searchGoogleBooks(query, limit), "googleBooks"),
+  safe(() => openLibrary.searchOpenLibrary(query, limit), "openLibrary"),
+  safe(() => internetArchive.searchInternetArchive(query, limit), "internetArchive"),
+  safe(() => crossref.searchCrossref(rewrittenQuery, limit * 2), "crossref"),
+  safe(() => arxiv.searchArxiv(rewrittenQuery, limit), "arxiv"),
+  safe(() => oer.searchOERCommons(query, limit), "oer")
+]);
 
     /* =================================================
        5️⃣ Merge + De-duplicate + Category tagging
@@ -103,17 +100,17 @@ safe(() => webscraping.searchWebscraping(webQuery, limit * 2), "webscraping"),
 
     // Merge sources
     pushUnique(serpResults, "Web");
-    pushUnique(braveResults, "Web");
-    pushUnique(serperResults, "Web");
-    pushUnique(apilayerResults, "Web");
-    pushUnique(zenscrapeResults, "Web");
-    pushUnique(webscrapingResults, "Web");
-    pushUnique(googleBooksResults, "Books");
-    pushUnique(openLibResults, "Books");
-    pushUnique(iaResults, "Archives");
-    pushUnique(crossrefResults, "Journals");
-    pushUnique(arxivResults, "Journals");
-    pushUnique(oerResults, "Others");
+pushUnique(braveResults, "Web");
+pushUnique(serperResults, "Web");
+pushUnique(apilayerResults, "Web");
+pushUnique(duckduckgoResults, "Web");
+
+pushUnique(googleBooksResults, "Books");
+pushUnique(openLibResults, "Books");
+pushUnique(iaResults, "Archives");
+pushUnique(crossrefResults, "Journals");
+pushUnique(arxivResults, "Journals");
+pushUnique(oerResults, "Others");
 
     /* =================================================
        6️⃣ AI RELEVANCE RANKING (Groq)
@@ -159,19 +156,18 @@ try {
       summary,
       resultsCount: mergedResults.length,
       sourcesCount: {
-        serpstack: serpResults.length,
-        brave: braveResults.length,
-        serper: serperResults.length,
-        apilayer: apilayerResults.length,
-        zenscrape: zenscrapeResults.length,
-        webscraping: webscrapingResults.length,
-        googleBooks: googleBooksResults.length,
-        openLibrary: openLibResults.length,
-        internetArchive: iaResults.length,
-        crossref: crossrefResults.length,
-        arxiv: arxivResults.length,
-        oer: oerResults.length
-      },
+  serpstack: serpResults.length,
+  brave: braveResults.length,
+  serper: serperResults.length,
+  apilayer: apilayerResults.length,
+  duckduckgo: duckduckgoResults.length,
+  googleBooks: googleBooksResults.length,
+  openLibrary: openLibResults.length,
+  internetArchive: iaResults.length,
+  crossref: crossrefResults.length,
+  arxiv: arxivResults.length,
+  oer: oerResults.length
+},
       results: resultsByCategory
     });
 
